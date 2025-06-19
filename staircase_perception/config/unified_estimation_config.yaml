@@ -1,0 +1,134 @@
+# ROS Node Params - Topic Names and Pre-processing - Staircase Perception Params
+/**:
+  ros__parameters:
+    
+    use_sim_time: false
+
+    staircase_perception_params:
+      global_frame_id: "global"
+
+    # ROS Topics
+    staircase_perception_topics:
+      point_cloud_topic: "registered_point_cloud"
+      odometry_topic: "odometry"
+      global_transform_topic: "transform"
+      
+      staircase_status_topic: "staircase_estimation_robot_node_status"
+      staircase_enable_topic: "staircase_estimation_robot_node_enable"
+
+      staircase_estimates_topic: "/staircase_estimation_robot_node/staircase_estimates" # No namespace because all robots need to publish here for client to pickup
+      staircase_measurements_topic: "staircase_estimation_robot_node/staircase_measurements"
+
+      clutter_point_cloud_in_topic: registered_depth_camera_points # Point cloud input to be used for segmentation, seperated so that a denser source can be used like a realsense
+      clutter_point_cloud_out_topic: "/simple_clutter_segmentation_node/segmented_stair_surface"
+
+      multirobot_merged_staircase_estimates_topic: "multi_robot_staircase_estimates"
+      staircase_client_marker_topic: "staircase_markers"
+      staircase_client_lists_topic: "staircase_lists"
+
+
+staircase_estimation_robot_node:
+  ros__parameters:
+    # Node Options
+    ros_rate: 10.0
+    debug: false
+    publish_measurements: false
+    robot_name: "robot"
+    odom_frame_id: "odom"
+    body_frame_id: "base_link"
+    transform_detections_to_global: false
+
+    # Point Cloud Parameters
+    stair_pointcloud:
+      leaf_size: 0.025
+      # Cloud Range Cropped for Search 
+      # Changing this range will also increasing point cloud accumulation range. 
+      # Please also update 'stair_line_extractor.max_range' paramter if you want to increase detection range.
+      min_range_y: -4.0
+      max_range_y:  4.0 # [meters]
+      min_range_x: -4.0 
+      max_range_x: 4.0  # [meters]
+      min_range_z: -2.5
+      max_range_z: 1.5  # [meters]
+
+    # Stair Detector Parameters
+    stair_detector:
+      min_stair_count: 3          # Unit: Minimum number of stairs for detection
+      stair_slope_min: 0.35       # Unit: Radians
+      stair_slope_max: 1.22       # Unit: Radians 
+
+      min_stair_width: 0.75       # Unit: Meters # Change this to change the minimum stair width that can be detected
+
+      min_stair_height: 0.11       # Unit: Meters # Change this to change the minimum stair height (rise) that can be detected
+      max_stair_height: 0.3      # Unit: Meters # Change this to change the maximum stair height (run) that can be detected
+      min_stair_depth: 0.15      # Unit: Meters # Change this to change the minimum stair depth (run) that can be detected
+      max_stair_depth: 0.45       # Unit: Meters # Change this to change the maximum stair depth (run) that can be detected
+
+      max_stair_curvature: 0.55   # Unit: Radians # Change this to change maximum staircase curvature for curved staircases 
+
+      angle_resolution: 1.0       # Unit: Degrees (For front-view projection)
+      robot_height: 0.5           # Unit: Meters (Used to segment ground height)
+      initialization_range: 0.5   # Unit: Meters (Range from the ground to search for the initial two steps)
+      ground_height_buffer: 0.05  # Unit: Meters (Buffer from robot height where ground lines are classified)
+      use_ramp_detection: true    # Eliminates false positives by ensuring lines on ramps are considered, making this false will potentially lead to increased detections at the expense of false positives
+
+    # Line Extractor Params 
+    stair_line_extractor:
+      # Weighted Line Fitting
+      bearing_variance: 0.0001
+      range_variance: 0.001
+      z_variance: 0.0004
+      least_sq_angle_thresh: 0.05
+      least_sq_radius_thresh: 0.075
+
+      # Split and Merge Params for Line Detection Node
+      max_line_gap: 0.2         # [Unit: Meters]
+      min_range: 0.1            # [Unit: Meters]
+      max_range: 5.0            # [Unit: Meters]  # Change this along with the 'stair_pointcloud.m**' params to increase range of detections.
+      min_split_distance: 0.2   # [Unit: Meters]
+      min_line_points: 7        # [Unit: Count]
+      outlier_distance: 0.2     # [Unit: Meters]
+
+    stair_manager:
+      yaw_threshold: 0.75 # [Unit: Radians] Angle between current staircase and incoming detection to be considered similar
+      filter_type: "l_ekf" # "averg" for Simple Averaging,"l_ekf" for EKF in Local Frame, "maxim" for Maximizing filter
+
+    stair_ekf_params:
+      initial_measurement_sigmas: [0.1, 0.1, 0.2, 0.2] # r, theta, z_start, z_end
+      initial_pose_sigmas: [0.00, 0.00, 0.005, 0.03] # x, y, z, yaw
+
+      measurement_sigmas: [0.075, 0.075, 0.07, 0.071]
+      pose_sigmas: [0.000, 0.00, 0.02, 0.03] # x, y, z, yaw
+
+      model_noise_sigmas: [0.005, 0.005, 0.0, 0.05, 0.1, 0.05] # Noise in model (height, depth, width, initial angle, deviation, end_angle)
+
+simple_clutter_segmentation_node:
+  ros__parameters:
+    processing_rate: 10.0
+    robot_name: "robot"
+    odom_frame_id: "odom"
+    body_frame_id: "base_link"
+    transform_detections_to_global: false
+
+    segmentation_params:
+      max_surface_thickness: 0.05
+      combine_pointcloud_scans: true
+
+      leaf_size: 0.025
+      # Cloud Range Cropped for Segmentation
+      min_range_y: -4.0
+      max_range_y:  4.0 # Total Y range
+      min_range_x: -4.0 
+      max_range_x: 4.0  # Total X range 
+      min_range_z: -2.5
+      max_range_z: 1.5  # Total Z range 
+
+staircase_client_node:
+  ros__parameters:
+    
+    publish_updated_estimate: true
+    publish_marker_type: "combined" # "combined" or "seperate"
+
+    stair_manager:
+      yaw_threshold: 0.75 # [Unit: Radians] Angle between current staircase and incoming detection to be considered similar
+      filter_type: "averg" # "averg" for Simple Averaging. Client node doesn't support any other filter yet.
