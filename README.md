@@ -97,9 +97,9 @@ This software is released under the BSD 3-Clause License. See the `LICENSE` file
 
 ---
 ## Acknowledgments
-* We would like to extend our sincere gratitude to Dr. Matthew Travers and Dr. Bhaskar Vundurthy for their invaluable advice and support throughout this project.
+* I would like to extend my sincere gratitude to Dr. Matthew Travers and Dr. Bhaskar Vundurthy for their invaluable advice and support throughout this project.
 
-* We would also like to thank Namya Bagree and Burhanuddin Shirose for their contributions during the development of this project.
+* Thanks to Namya Bagree and Burhanuddin Shirose for their contributions during the development of this project.
 
 * This project uses modified code from the **[laser_line_extraction](https://github.com/kam3k/laser_line_extraction)** repository for its line segmentation features.
   * Derived Files:

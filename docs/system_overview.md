@@ -61,10 +61,10 @@ Here are the descriptions of launch arguments from `launch/staircase_estimation_
 A high-level diagram of the overall flow and our conventions for tf frames are shown in the figures below. Please refer to `docs/ros2_nodes/**` for detailed inputs and outputs to each of the ROS2 nodes.
 
 <p align="center">
-  <img width="600" src="media/staircase_ros2.png">
+  <img src="media/staircase_ros2.png">
 </p>
 <p align="center">
-  <img width="600" src="media/tf_convention.png">
+  <img src="media/tf_convention.png">
 </p>
 
 ## Additional Standalone Nodes
