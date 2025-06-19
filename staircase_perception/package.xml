@@ -4,9 +4,9 @@
   <version>0.0.0</version>
   <description>The staircase detection, estimation and segmentation package</description>
 
-  <maintainer email="pkettava@andrew.cmu.edu">Prasanna Sriganesh</maintainer>
+  <maintainer email="prassi@cmu.edu">Prasanna Sriganesh</maintainer>
 
-  <license>TODO</license>
+  <license>BSD 3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
