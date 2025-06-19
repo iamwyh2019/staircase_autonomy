@@ -32,9 +32,9 @@ This package has been fully tested with ROS2 Humble. To build the packages, clon
 
 ```
 cd your_ros2_ws/src
-git clone [https://github.com/prassi07/staircase_autonomy.git](https://github.com/prassi07/staircase_autonomy.git)
+git clone https://github.com/prassi07/staircase_autonomy.git
 cd ..
-colcon build --symlink-install --packages-upto staircase_perception
+colcon build --symlink-install --packages-up-to staircase_perception
 source install/setup.bash
 ```
 
