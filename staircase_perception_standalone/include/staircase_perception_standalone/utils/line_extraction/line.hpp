@@ -41,7 +41,7 @@
 #define LINE_H
 
 #include <vector>
-#include "staircase_perception/utils/stair_utilities.hpp"
+#include "staircase_perception_standalone/utils/stair_utilities.hpp"
 
 class Line{
     public:

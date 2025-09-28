@@ -1,4 +1,4 @@
-#include "staircase_perception/core/stair_detector.hpp"
+#include "staircase_perception_standalone/core/stair_detector.hpp"
 
 //Default Constructors and Destructors
 StairDetector::StairDetector(){}

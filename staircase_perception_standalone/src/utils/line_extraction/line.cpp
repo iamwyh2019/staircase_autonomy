@@ -37,7 +37,7 @@
  * 
  */
 
-#include "staircase_perception/utils/line_extraction/line.hpp"
+#include "staircase_perception_standalone/utils/line_extraction/line.hpp"
 
 
 // Constructor to create a line objects - Using a scan message data

@@ -45,8 +45,8 @@
 #include <boost/array.hpp>
 #include <Eigen/Dense>
 
-#include "staircase_perception/utils/stair_utilities.hpp"
-#include "staircase_perception/utils/line_extraction/line.hpp"
+#include "staircase_perception_standalone/utils/stair_utilities.hpp"
+#include "staircase_perception_standalone/utils/line_extraction/line.hpp"
 
 class LineExtractor{
     public:

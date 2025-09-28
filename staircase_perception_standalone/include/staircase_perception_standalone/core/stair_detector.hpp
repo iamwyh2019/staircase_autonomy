@@ -13,9 +13,9 @@
 #include <pcl/filters/crop_hull.h>
 #include <pcl/Vertices.h>
 
-#include "staircase_perception/utils/stair_utilities.hpp"
-#include "staircase_perception/utils/line_extraction/line_extractor.hpp"
-#include "staircase_perception/utils/line_extraction/line.hpp"
+#include "staircase_perception_standalone/utils/stair_utilities.hpp"
+#include "staircase_perception_standalone/utils/line_extraction/line_extractor.hpp"
+#include "staircase_perception_standalone/utils/line_extraction/line.hpp"
 
 #include <string>
 #include <iostream>

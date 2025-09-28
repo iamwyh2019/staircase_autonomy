@@ -37,7 +37,7 @@
  * 
  */
 
-#include "staircase_perception/utils/line_extraction/line_extractor.hpp"
+#include "staircase_perception_standalone/utils/line_extraction/line_extractor.hpp"
 #include <algorithm>
 #include <Eigen/Dense>
 #include <iostream>

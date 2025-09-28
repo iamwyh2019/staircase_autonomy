@@ -5,8 +5,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <chrono>
 
-#include "staircase_perception/core/stair_detector.hpp"
-#include "staircase_perception/utils/stair_utilities.hpp"
+#include "staircase_perception_standalone/core/stair_detector.hpp"
+#include "staircase_perception_standalone/utils/stair_utilities.hpp"
 
 // Function to create default parameters for testing
 stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
