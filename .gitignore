@@ -194,3 +194,9 @@ cython_debug/
 .cursorindexingignore
 
 .vscode/*
+
+# macos specific
+.DS_Store
+
+# data
+staircase_perception_standalone/data

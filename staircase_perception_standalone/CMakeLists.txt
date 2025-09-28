@@ -97,8 +97,35 @@ target_link_libraries(test_detector_only
   Eigen3::Eigen
 )
 
+# PLY to PCD converter tool
+add_executable(ply_to_pcd_converter
+  tools/ply_to_pcd_converter.cpp
+)
+
+target_link_libraries(ply_to_pcd_converter
+  ${PCL_LIBRARIES}
+)
+
+# PCD inspection tool
+add_executable(inspect_pcd
+  tools/inspect_pcd.cpp
+)
+
+target_link_libraries(inspect_pcd
+  ${PCL_LIBRARIES}
+)
+
+# PCD to PLY converter tool
+add_executable(pcd_to_ply
+  tools/pcd_to_ply.cpp
+)
+
+target_link_libraries(pcd_to_ply
+  ${PCL_LIBRARIES}
+)
+
 # Install targets
-install(TARGETS stair_detector line_extraction test_detector_only
+install(TARGETS stair_detector line_extraction test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
