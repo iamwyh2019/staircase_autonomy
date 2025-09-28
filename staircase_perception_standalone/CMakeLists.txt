@@ -135,6 +135,7 @@ target_link_libraries(debug_lines
   Eigen3::Eigen
 )
 
+
 # Install targets
 install(TARGETS stair_detector line_extraction test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply debug_lines
   LIBRARY DESTINATION lib

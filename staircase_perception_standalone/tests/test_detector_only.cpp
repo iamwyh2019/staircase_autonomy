@@ -7,6 +7,7 @@
 
 #include "staircase_perception_standalone/core/stair_detector.hpp"
 #include "staircase_perception_standalone/utils/stair_utilities.hpp"
+#include "staircase_perception_standalone/utils/line_extraction/line_extractor.hpp"
 
 // Function to create default parameters for testing
 stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
@@ -182,37 +183,6 @@ int main(int argc, char** argv) {
 
     std::cout << "After voxel filtering: " << filtered_cloud->points.size() << " points\n";
 
-    // Check bounds of filtered cloud
-    if (!filtered_cloud->empty()) {
-        float min_x = filtered_cloud->points[0].x, max_x = filtered_cloud->points[0].x;
-        float min_y = filtered_cloud->points[0].y, max_y = filtered_cloud->points[0].y;
-        float min_z = filtered_cloud->points[0].z, max_z = filtered_cloud->points[0].z;
-
-        int points_in_bounds = 0;
-        for (const auto& point : filtered_cloud->points) {
-            min_x = std::min(min_x, point.x); max_x = std::max(max_x, point.x);
-            min_y = std::min(min_y, point.y); max_y = std::max(max_y, point.y);
-            min_z = std::min(min_z, point.z); max_z = std::max(max_z, point.z);
-
-            // Check if point is within detection bounds
-            if (point.x >= detector_params.x_min && point.x <= detector_params.x_max &&
-                point.y >= detector_params.y_min && point.y <= detector_params.y_max &&
-                point.z >= detector_params.z_min && point.z <= detector_params.z_max) {
-                points_in_bounds++;
-            }
-        }
-
-        std::cout << "Filtered cloud bounds:\n";
-        std::cout << "  X: [" << min_x << ", " << max_x << "]\n";
-        std::cout << "  Y: [" << min_y << ", " << max_y << "]\n";
-        std::cout << "  Z: [" << min_z << ", " << max_z << "]\n";
-        std::cout << "Detection bounds:\n";
-        std::cout << "  X: [" << detector_params.x_min << ", " << detector_params.x_max << "]\n";
-        std::cout << "  Y: [" << detector_params.y_min << ", " << detector_params.y_max << "]\n";
-        std::cout << "  Z: [" << detector_params.z_min << ", " << detector_params.z_max << "]\n";
-        std::cout << "Points within detection bounds: " << points_in_bounds
-                  << " (" << (100.0 * points_in_bounds / filtered_cloud->size()) << "%)\n";
-    }
 
     // Set input cloud
     detector.setPointCloudAndOdometry(filtered_cloud);
@@ -251,16 +221,68 @@ int main(int argc, char** argv) {
             break;
     }
 
-    // Save processed clouds for visualization (optional)
+    // Save processed clouds and test line extraction
     pcl::PointCloud<pcl::PointXYZI>::Ptr processed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
 
-    std::cout << "\nSaving processed point clouds...\n";
+    std::cout << "\nSaving processed point clouds and testing line extraction...\n";
 
     // Save top-down projection
     detector.getProcessedCloud(processed_cloud, 1);
     if (!processed_cloud->empty()) {
         pcl::io::savePCDFileASCII("topdown_projection.pcd", *processed_cloud);
         std::cout << "Saved top-down projection to: topdown_projection.pcd\n";
+
+        // Test line extraction on detector's internal projection
+        int non_zero = 0;
+        for (const auto& point : processed_cloud->points) {
+            if (point.x != 0 || point.y != 0 || point.z != 0) non_zero++;
+        }
+        std::cout << "Detector's top-down: " << processed_cloud->size() << " total, " << non_zero << " non-zero points\n";
+
+        if (non_zero > 0) {
+            // Quick line extraction test
+            std::vector<float> ranges, xs, ys, zs, bearings, cos_bearings, sin_bearings;
+            std::vector<unsigned int> indices;
+
+            for (size_t i = 0; i < processed_cloud->points.size(); ++i) {
+                const auto& point = processed_cloud->points[i];
+                if (point.x == 0 && point.y == 0 && point.z == 0) continue;
+
+                float range = sqrt(point.x*point.x + point.y*point.y);
+                float bearing = atan2(point.y, point.x);
+
+                ranges.push_back(range);
+                xs.push_back(point.x);
+                ys.push_back(point.y);
+                zs.push_back(point.z);
+                bearings.push_back(bearing);
+                cos_bearings.push_back(cos(bearing));
+                sin_bearings.push_back(sin(bearing));
+                indices.push_back(indices.size());
+            }
+
+            if (ranges.size() >= 3) {
+                LineExtractor extractor;
+                extractor.setPrecomputedCache(bearings, cos_bearings, sin_bearings, indices);
+                extractor.setRangeData(ranges, xs, ys, zs);
+                extractor.setBearingVariance(0.05);
+                extractor.setRangeVariance(0.02);
+                extractor.setZVariance(0.01);
+                extractor.setLeastSqAngleThresh(0.1);
+                extractor.setLeastSqRadiusThresh(0.05);
+                extractor.setMaxLineGap(0.1);
+                extractor.setMinLineLength(0.3);
+                extractor.setMinRange(0.2);
+                extractor.setMaxRange(10.0);
+                extractor.setMinSplitDist(0.05);
+                extractor.setOutlierDist(0.05);
+                extractor.setMinLinePoints(5);
+
+                std::vector<Line> lines;
+                extractor.extractLines(lines);
+                std::cout << "Lines extracted from detector's projection: " << lines.size() << "\n";
+            }
+        }
     }
 
     // Save cylindrical projection

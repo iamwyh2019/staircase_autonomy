@@ -123,6 +123,8 @@ void debugProjectionLineExtraction(pcl::PointCloud<pcl::PointXYZI>::Ptr projecti
         return;
     }
 
+    std::cout << "Found " << non_zero << " valid points - proceeding with line extraction\n";
+
     // Prepare data for line extraction
     std::vector<float> ranges, xs, ys, zs, bearings, cos_bearings, sin_bearings;
     std::vector<unsigned int> indices;
@@ -189,50 +191,29 @@ void debugProjectionLineExtraction(pcl::PointCloud<pcl::PointXYZI>::Ptr projecti
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        std::cout << "Usage: " << argv[0] << " <input.pcd>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <projection.pcd>" << std::endl;
+        std::cout << "Example: " << argv[0] << " topdown_projection.pcd" << std::endl;
         return -1;
     }
 
-    std::string pcd_file = argv[1];
+    std::string projection_file = argv[1];
     std::cout << "=== Line Extraction Debug Tool ===\n";
 
-    // Create parameters
-    auto detector_params = createDefaultDetectorParams();
-    auto line_params = createDefaultLineParams();
-
-    // Initialize detector
-    StairDetector detector(detector_params, line_params);
-
-    // Load and process point cloud
-    pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-    if (pcl::io::loadPCDFile<pcl::PointXYZI>(pcd_file, *input_cloud) == -1) {
-        std::cerr << "Error: Could not read file " << pcd_file << std::endl;
+    // Load the projection file directly
+    pcl::PointCloud<pcl::PointXYZI>::Ptr projection(new pcl::PointCloud<pcl::PointXYZI>);
+    if (pcl::io::loadPCDFile<pcl::PointXYZI>(projection_file, *projection) == -1) {
+        std::cerr << "Error: Could not read file " << projection_file << std::endl;
         return -1;
     }
 
-    // Apply voxel filtering
-    pcl::VoxelGrid<pcl::PointXYZI> voxel_filter;
-    voxel_filter.setInputCloud(input_cloud);
-    voxel_filter.setLeafSize(detector_params.leaf_size, detector_params.leaf_size, detector_params.leaf_size);
+    std::cout << "Loaded projection: " << projection->size() << " points\n";
 
-    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-    voxel_filter.filter(*filtered_cloud);
+    // Create line extraction parameters
+    auto line_params = createDefaultLineParams();
 
-    std::cout << "Loaded and filtered: " << filtered_cloud->points.size() << " points\n";
-
-    // Set input cloud to generate projections
-    detector.setPointCloudAndOdometry(filtered_cloud);
-
-    // Get projections
-    pcl::PointCloud<pcl::PointXYZI>::Ptr topdown(new pcl::PointCloud<pcl::PointXYZI>);
-    pcl::PointCloud<pcl::PointXYZI>::Ptr cylindrical(new pcl::PointCloud<pcl::PointXYZI>);
-
-    detector.getProcessedCloud(topdown, 1);      // Top-down
-    detector.getProcessedCloud(cylindrical, 2);  // Cylindrical
-
-    // Debug line extraction for both projections
-    debugProjectionLineExtraction(topdown, "topdown", line_params);
-    debugProjectionLineExtraction(cylindrical, "cylindrical", line_params);
+    // Debug line extraction on the loaded projection
+    std::string projection_name = projection_file.substr(projection_file.find_last_of("/") + 1);
+    debugProjectionLineExtraction(projection, projection_name, line_params);
 
     return 0;
 }
