@@ -9,47 +9,20 @@
 #include "staircase_perception_standalone/utils/stair_utilities.hpp"
 #include "staircase_perception_standalone/utils/line_extraction/line_extractor.hpp"
 
-// Function to create default parameters
-stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
-    stair_utility::StaircaseDetectorParams params;
-    params.use_ramp_detection = true;
-    params.angle_resolution = 2.0;
-    params.leaf_size = 0.05;
-    params.robot_height = 0.0;
-    params.initialization_range = 2.0;
-    params.ground_height_buffer = 0.2;
-    params.min_stair_count = 3;
-    params.stair_slope_min = 0.2;
-    params.stair_slope_max = 1.2;
-    params.min_stair_width = 0.3;
-    params.min_stair_height = 0.1;
-    params.max_stair_height = 0.25;
-    params.min_stair_depth = 0.2;
-    params.max_stair_depth = 0.4;
-    params.max_stair_curvature = 0.3;
-    params.x_max = 5.0;
-    params.x_min = -2.0;
-    params.y_max = 3.0;
-    params.y_min = -3.0;
-    params.z_max = 4.0;
-    params.z_min = -1.0;
-    return params;
-}
-
 stair_utility::LineExtractorParams createDefaultLineParams() {
     stair_utility::LineExtractorParams params;
-    params.bearing_var = 0.05;
-    params.range_var = 0.02;
-    params.z_var = 0.01;
-    params.least_sq_angle_thresh = 0.1;
-    params.least_sq_radius_thresh = 0.05;
-    params.max_line_gap = 0.1;
-    params.min_line_length = 0.3;
-    params.min_range = 0.2;
-    params.max_range = 10.0;
-    params.min_split_dist = 0.05;
-    params.outlier_dist = 0.05;
-    params.min_line_points = 5;
+    params.bearing_var = 0.0001;
+    params.range_var = 0.001;
+    params.z_var = 0.0004;
+    params.least_sq_angle_thresh = 0.05;
+    params.least_sq_radius_thresh = 0.075;
+    params.max_line_gap = 0.2;
+    params.min_line_length = 0.75;
+    params.min_range = 0.1;
+    params.max_range = 5.0;
+    params.min_split_dist = 0.2;
+    params.outlier_dist = 0.2;
+    params.min_line_points = 7;
     return params;
 }
 

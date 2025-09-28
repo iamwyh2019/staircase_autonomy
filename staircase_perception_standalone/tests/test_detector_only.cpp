@@ -15,25 +15,25 @@ stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
 
     // Detection parameters
     params.use_ramp_detection = true;
-    params.angle_resolution = 2.0;  // degrees
-    params.leaf_size = 0.05;        // 5cm voxel size
+    params.angle_resolution = 1.0;  // degrees
+    params.leaf_size = 0.025;        // 2.5cm voxel size
 
     // Robot parameters - adjusted for coordinate system where robot is at bottom
-    params.robot_height = 0.0;      // Robot at z=0 (bottom of scene)
-    params.initialization_range = 2.0;  // 2m initialization range
-    params.ground_height_buffer = 0.2;  // 20cm ground buffer (more lenient)
+    params.robot_height = 0.5;      // Robot at z=0 (bottom of scene)
+    params.initialization_range = 0.5;  // 0.5m initialization range
+    params.ground_height_buffer = 0.05;  // 5cm ground buffer (more lenient)
 
     // Stair parameters
     params.min_stair_count = 3;
-    params.stair_slope_min = 0.2;   // ~11 degrees
-    params.stair_slope_max = 1.2;   // ~50 degrees
+    params.stair_slope_min = 0.35;   // ~11 degrees
+    params.stair_slope_max = 1.22;   // ~50 degrees
 
-    params.min_stair_width = 0.3;   // 30cm minimum width
-    params.min_stair_height = 0.1;  // 10cm minimum height
-    params.max_stair_height = 0.25; // 25cm maximum height
-    params.min_stair_depth = 0.2;   // 20cm minimum depth
-    params.max_stair_depth = 0.4;   // 40cm maximum depth
-    params.max_stair_curvature = 0.3; // Maximum curvature
+    params.min_stair_width = 0.75;   // 75cm minimum width
+    params.min_stair_height = 0.11;  // 11cm minimum height
+    params.max_stair_height = 0.3; // 30cm maximum height
+    params.min_stair_depth = 0.15;   // 15cm minimum depth
+    params.max_stair_depth = 0.45;   // 45cm maximum depth
+    params.max_stair_curvature = 0.55; // Maximum curvature
 
     // Point cloud bounds (robot-centered) - adjusted for your data
     params.x_max = 5.0;   // 5m forward
@@ -48,20 +48,18 @@ stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
 
 stair_utility::LineExtractorParams createDefaultLineParams() {
     stair_utility::LineExtractorParams params;
-
-    params.bearing_var = 0.05;
-    params.range_var = 0.02;
-    params.z_var = 0.01;
-    params.least_sq_angle_thresh = 0.1;
-    params.least_sq_radius_thresh = 0.05;
-    params.max_line_gap = 0.1;
-    params.min_line_length = 0.3;
-    params.min_range = 0.2;
-    params.max_range = 10.0;
-    params.min_split_dist = 0.05;
-    params.outlier_dist = 0.05;
-    params.min_line_points = 5;
-
+    params.bearing_var = 0.0001;
+    params.range_var = 0.001;
+    params.z_var = 0.0004;
+    params.least_sq_angle_thresh = 0.05;
+    params.least_sq_radius_thresh = 0.075;
+    params.max_line_gap = 0.2;
+    params.min_line_length = 0.75;
+    params.min_range = 0.1;
+    params.max_range = 5.0;
+    params.min_split_dist = 0.2;
+    params.outlier_dist = 0.2;
+    params.min_line_points = 7;
     return params;
 }
 
