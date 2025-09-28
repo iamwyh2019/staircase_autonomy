@@ -17,10 +17,10 @@ stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
     params.angle_resolution = 2.0;  // degrees
     params.leaf_size = 0.05;        // 5cm voxel size
 
-    // Robot parameters
-    params.robot_height = 0.3;      // 30cm robot height
+    // Robot parameters - adjusted for coordinate system where robot is at bottom
+    params.robot_height = 0.0;      // Robot at z=0 (bottom of scene)
     params.initialization_range = 2.0;  // 2m initialization range
-    params.ground_height_buffer = 0.1;  // 10cm ground buffer
+    params.ground_height_buffer = 0.2;  // 20cm ground buffer (more lenient)
 
     // Stair parameters
     params.min_stair_count = 3;
@@ -34,12 +34,12 @@ stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
     params.max_stair_depth = 0.4;   // 40cm maximum depth
     params.max_stair_curvature = 0.3; // Maximum curvature
 
-    // Point cloud bounds (robot-centered)
+    // Point cloud bounds (robot-centered) - adjusted for your data
     params.x_max = 5.0;   // 5m forward
-    params.x_min = -1.0;  // 1m backward
+    params.x_min = -2.0;  // 2m backward (your data goes to -1.5)
     params.y_max = 3.0;   // 3m left
     params.y_min = -3.0;  // 3m right
-    params.z_max = 1.0;   // 1m up
+    params.z_max = 4.0;   // 4m up (your data goes to 3.6)
     params.z_min = -1.0;  // 1m down
 
     return params;
@@ -181,6 +181,38 @@ int main(int argc, char** argv) {
     voxel_filter.filter(*filtered_cloud);
 
     std::cout << "After voxel filtering: " << filtered_cloud->points.size() << " points\n";
+
+    // Check bounds of filtered cloud
+    if (!filtered_cloud->empty()) {
+        float min_x = filtered_cloud->points[0].x, max_x = filtered_cloud->points[0].x;
+        float min_y = filtered_cloud->points[0].y, max_y = filtered_cloud->points[0].y;
+        float min_z = filtered_cloud->points[0].z, max_z = filtered_cloud->points[0].z;
+
+        int points_in_bounds = 0;
+        for (const auto& point : filtered_cloud->points) {
+            min_x = std::min(min_x, point.x); max_x = std::max(max_x, point.x);
+            min_y = std::min(min_y, point.y); max_y = std::max(max_y, point.y);
+            min_z = std::min(min_z, point.z); max_z = std::max(max_z, point.z);
+
+            // Check if point is within detection bounds
+            if (point.x >= detector_params.x_min && point.x <= detector_params.x_max &&
+                point.y >= detector_params.y_min && point.y <= detector_params.y_max &&
+                point.z >= detector_params.z_min && point.z <= detector_params.z_max) {
+                points_in_bounds++;
+            }
+        }
+
+        std::cout << "Filtered cloud bounds:\n";
+        std::cout << "  X: [" << min_x << ", " << max_x << "]\n";
+        std::cout << "  Y: [" << min_y << ", " << max_y << "]\n";
+        std::cout << "  Z: [" << min_z << ", " << max_z << "]\n";
+        std::cout << "Detection bounds:\n";
+        std::cout << "  X: [" << detector_params.x_min << ", " << detector_params.x_max << "]\n";
+        std::cout << "  Y: [" << detector_params.y_min << ", " << detector_params.y_max << "]\n";
+        std::cout << "  Z: [" << detector_params.z_min << ", " << detector_params.z_max << "]\n";
+        std::cout << "Points within detection bounds: " << points_in_bounds
+                  << " (" << (100.0 * points_in_bounds / filtered_cloud->size()) << "%)\n";
+    }
 
     // Set input cloud
     detector.setPointCloudAndOdometry(filtered_cloud);

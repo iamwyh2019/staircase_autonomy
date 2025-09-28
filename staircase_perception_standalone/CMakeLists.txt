@@ -124,8 +124,19 @@ target_link_libraries(pcd_to_ply
   ${PCL_LIBRARIES}
 )
 
+# Debug lines tool
+add_executable(debug_lines
+  tools/debug_lines.cpp
+)
+
+target_link_libraries(debug_lines
+  stair_detector
+  ${PCL_LIBRARIES}
+  Eigen3::Eigen
+)
+
 # Install targets
-install(TARGETS stair_detector line_extraction test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply
+install(TARGETS stair_detector line_extraction test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply debug_lines
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin

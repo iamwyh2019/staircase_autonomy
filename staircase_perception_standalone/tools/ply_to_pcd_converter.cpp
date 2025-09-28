@@ -40,31 +40,20 @@ int main(int argc, char** argv) {
     cloud_xyzi->points.resize(cloud_rgb->points.size());
 
     // Convert RGB to intensity and apply coordinate transformations
-    float min_z = std::numeric_limits<float>::max();
-    float max_z = -std::numeric_limits<float>::max();
-
-    // First pass: find z bounds for transformation
-    if (apply_arkit_transform) {
-        for (const auto& point : cloud_rgb->points) {
-            min_z = std::min(min_z, point.z);
-            max_z = std::max(max_z, point.z);
-        }
-        std::cout << "Original ARKit z range: [" << min_z << ", " << max_z << "]" << std::endl;
-    }
 
     for (size_t i = 0; i < cloud_rgb->points.size(); ++i) {
         const auto& rgb_point = cloud_rgb->points[i];
         auto& xyzi_point = cloud_xyzi->points[i];
 
         if (apply_arkit_transform) {
-            // ARKit transformation for stair detection:
-            // 1. Your code uses -z (camera looking down at stairs)
-            // 2. Need to transform to robot-centric coordinates
-            // 3. Set ground level (max_z) to z=0, robot at z=0.3
+            // ARKit → Robot coordinate system transformation:
+            // ARKit: X=right, Y=up, Z=forward (toward camera)
+            // Robot: X=forward, Y=left, Z=upward
 
-            xyzi_point.x = rgb_point.x;
-            xyzi_point.y = rgb_point.y;
-            xyzi_point.z = -rgb_point.z + max_z;  // Negate Z and shift so max becomes 0
+            // Transform:
+            xyzi_point.x = -rgb_point.z;  // ARKit forward (-Z) → Robot forward (+X)
+            xyzi_point.y = -rgb_point.x;  // ARKit right (+X) → Robot left (+Y)
+            xyzi_point.z = rgb_point.y;   // ARKit up (+Y) → Robot up (+Z)
         } else {
             // No transformation
             xyzi_point.x = rgb_point.x;
@@ -77,16 +66,10 @@ int main(int argc, char** argv) {
     }
 
     if (apply_arkit_transform) {
-        // Find new z bounds after transformation
-        float new_min_z = std::numeric_limits<float>::max();
-        float new_max_z = -std::numeric_limits<float>::max();
-        for (const auto& point : cloud_xyzi->points) {
-            new_min_z = std::min(new_min_z, point.z);
-            new_max_z = std::max(new_max_z, point.z);
-        }
-        std::cout << "Transformed z range: [" << new_min_z << ", " << new_max_z << "]" << std::endl;
-        std::cout << "Ground level (z=0) should be at highest points" << std::endl;
-        std::cout << "Robot reference at z=0.3 (above ground)" << std::endl;
+        std::cout << "Applied ARKit → Robot coordinate transformation" << std::endl;
+        std::cout << "  ARKit Z (forward) → Robot X (forward)" << std::endl;
+        std::cout << "  ARKit X (right) → Robot Y (left)" << std::endl;
+        std::cout << "  ARKit Y (up) → Robot Z (up)" << std::endl;
     }
 
     // Save as PCD
