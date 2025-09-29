@@ -1,15 +1,64 @@
 #include <iostream>
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/filters/voxel_grid.h>
 #include <chrono>
+#include <numeric>
 
 #include "staircase_perception_standalone/core/stair_detector.hpp"
 #include "staircase_perception_standalone/utils/stair_utilities.hpp"
 #include "staircase_perception_standalone/utils/line_extraction/line_extractor.hpp"
 #include "staircase_perception_standalone/utils/config_parser.hpp"
 
+
+void saveLineVisualization(const std::vector<Line>& lines, const std::string& filename) {
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr line_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    std::cout << "Saving " << lines.size() << " lines to " << filename << std::endl;
+
+    for (size_t i = 0; i < lines.size(); ++i) {
+        const Line& line = lines[i];
+
+        // Get line endpoints
+        const auto& start = line.getStart();
+        const auto& end = line.getEnd();
+
+        std::cout << "Line " << i << ": start(" << start[0] << "," << start[1] << "," << start[2]
+                  << ") end(" << end[0] << "," << end[1] << "," << end[2]
+                  << ") length=" << line.length() << std::endl;
+
+        // Create points along the line for visualization
+        int num_viz_points = 50;
+        for (int j = 0; j <= num_viz_points; ++j) {
+            float t = static_cast<float>(j) / num_viz_points;
+
+            pcl::PointXYZRGB point;
+            point.x = start[0] + t * (end[0] - start[0]);
+            point.y = start[1] + t * (end[1] - start[1]);
+            point.z = start[2] + t * (end[2] - start[2]);
+
+            // Different color for each line
+            switch (i % 6) {
+                case 0: point.r = 255; point.g = 0; point.b = 0; break;     // Red
+                case 1: point.r = 0; point.g = 255; point.b = 0; break;     // Green
+                case 2: point.r = 0; point.g = 0; point.b = 255; break;     // Blue
+                case 3: point.r = 255; point.g = 255; point.b = 0; break;   // Yellow
+                case 4: point.r = 255; point.g = 0; point.b = 255; break;   // Magenta
+                case 5: point.r = 0; point.g = 255; point.b = 255; break;   // Cyan
+            }
+
+            line_cloud->points.push_back(point);
+        }
+    }
+
+    line_cloud->width = line_cloud->points.size();
+    line_cloud->height = 1;
+    line_cloud->is_dense = true;
+
+    pcl::io::savePLYFile(filename, *line_cloud, true);
+}
 
 void printStaircaseResults(const stair_utility::StaircaseMeasurement& stair_measurement, const std::string& direction) {
     std::cout << "\n=== " << direction << " Staircase Detected ===\n";
@@ -199,49 +248,57 @@ int main(int argc, char** argv) {
         }
         std::cout << "Detector's top-down: " << processed_cloud->size() << " total, " << non_zero << " non-zero points\n";
 
-        if (non_zero > 0) {
-            // Quick line extraction test
-            std::vector<float> ranges, xs, ys, zs, bearings, cos_bearings, sin_bearings;
-            std::vector<unsigned int> indices;
+        // Get actual lines detected by the detector
+        std::vector<Line> all_detector_lines;
 
-            for (size_t i = 0; i < processed_cloud->points.size(); ++i) {
-                const auto& point = processed_cloud->points[i];
-                if (point.x == 0 && point.y == 0 && point.z == 0) continue;
+        // Collect lines from all slices: above, ground, and below
+        auto lines_above = detector.getDetectedLinesAbove();
+        auto lines_ground = detector.getDetectedLinesGround();
+        auto lines_below = detector.getDetectedLinesBelow();
 
-                float range = sqrt(point.x*point.x + point.y*point.y);
-                float bearing = atan2(point.y, point.x);
-
-                ranges.push_back(range);
-                xs.push_back(point.x);
-                ys.push_back(point.y);
-                zs.push_back(point.z);
-                bearings.push_back(bearing);
-                cos_bearings.push_back(cos(bearing));
-                sin_bearings.push_back(sin(bearing));
-                indices.push_back(indices.size());
+        // Convert detector lines to Line objects for visualization
+        for (const auto& slice : lines_above) {
+            for (const auto& detected_line : *slice) {
+                Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
+                         detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
+                all_detector_lines.push_back(line);
             }
+        }
 
-            if (ranges.size() >= 3) {
-                LineExtractor extractor;
-                extractor.setPrecomputedCache(bearings, cos_bearings, sin_bearings, indices);
-                extractor.setRangeData(ranges, xs, ys, zs);
-                extractor.setBearingVariance(0.05);
-                extractor.setRangeVariance(0.02);
-                extractor.setZVariance(0.01);
-                extractor.setLeastSqAngleThresh(0.1);
-                extractor.setLeastSqRadiusThresh(0.05);
-                extractor.setMaxLineGap(0.1);
-                extractor.setMinLineLength(0.3);
-                extractor.setMinRange(0.2);
-                extractor.setMaxRange(10.0);
-                extractor.setMinSplitDist(0.05);
-                extractor.setOutlierDist(0.05);
-                extractor.setMinLinePoints(5);
-
-                std::vector<Line> lines;
-                extractor.extractLines(lines);
-                std::cout << "Lines extracted from detector's projection: " << lines.size() << "\n";
+        for (const auto& slice : lines_ground) {
+            for (const auto& detected_line : *slice) {
+                Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
+                         detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
+                all_detector_lines.push_back(line);
             }
+        }
+
+        for (const auto& slice : lines_below) {
+            for (const auto& detected_line : *slice) {
+                Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
+                         detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
+                all_detector_lines.push_back(line);
+            }
+        }
+
+        std::cout << "Actual lines detected by detector: " << all_detector_lines.size() << "\n";
+
+        // Count lines by length for debugging
+        int short_lines = 0, long_lines = 0;
+        for (const auto& line : all_detector_lines) {
+            if (line.length() < line_params.min_line_length) {
+                short_lines++;
+            } else {
+                long_lines++;
+            }
+        }
+        std::cout << "Lines shorter than " << line_params.min_line_length << "m: " << short_lines << std::endl;
+        std::cout << "Lines longer than " << line_params.min_line_length << "m: " << long_lines << std::endl;
+
+        // Save line visualization of actual detector lines
+        if (all_detector_lines.size() > 0) {
+            saveLineVisualization(all_detector_lines, "actual_detector_lines.ply");
+            std::cout << "Saved actual detector lines to: actual_detector_lines.ply" << std::endl;
         }
     }
 
