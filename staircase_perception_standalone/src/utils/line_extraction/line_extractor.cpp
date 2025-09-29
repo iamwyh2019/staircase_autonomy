@@ -107,20 +107,19 @@ void LineExtractor::extractLines(const std::shared_ptr<std::deque<stair_utility:
   {
     it->leastSqFit();
   }
-  
+
   // If there is more than one line, check if lines should be merged based on the merging criteria
   if (lines_.size() > 1)
   {
     mergeLines();
   }
-  
+
   filterLines();
 
   lines->clear();
   for(const Line &l: lines_){
     lines->push_back(stair_utility::DetectedLine(l.getStart(), l.getEnd(), l.getCenter(), l.getYaw(), l.getLineLength(), l.getRadius(), l.getAngle(), l.getCovariance(), params_.z_var));
   }
-
 }
 
 
@@ -242,18 +241,16 @@ void LineExtractor::filterCloseAndFarPoints()
 
 void LineExtractor::filterOutlierPoints()
 {
-  // if (filtered_indices_.size() < 3)
-  // {
-  //   return;
-  // }
+  if (filtered_indices_.size() < 3)
+  {
+    return;
+  }
 
   std::vector<unsigned int> output;
   unsigned int p_i, p_j, p_k;
   for (std::size_t i = 0; i < filtered_indices_.size(); ++i)
   {
-
     // Get two closest neighbours
-
     p_i = filtered_indices_[i];
     if (i == 0) // first point
     {
@@ -261,7 +258,7 @@ void LineExtractor::filterOutlierPoints()
       p_k = filtered_indices_[i + 2];
     }
     else if (i == filtered_indices_.size() - 1) // last point
-    {   
+    {
       p_j = filtered_indices_[i - 1];
       p_k = filtered_indices_[i - 2];
     }

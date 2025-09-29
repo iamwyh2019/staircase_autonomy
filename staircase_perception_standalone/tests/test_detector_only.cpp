@@ -8,60 +8,8 @@
 #include "staircase_perception_standalone/core/stair_detector.hpp"
 #include "staircase_perception_standalone/utils/stair_utilities.hpp"
 #include "staircase_perception_standalone/utils/line_extraction/line_extractor.hpp"
+#include "staircase_perception_standalone/utils/config_parser.hpp"
 
-// Function to create default parameters for testing
-stair_utility::StaircaseDetectorParams createDefaultDetectorParams() {
-    stair_utility::StaircaseDetectorParams params;
-
-    // Detection parameters
-    params.use_ramp_detection = true;
-    params.angle_resolution = 1.0;  // degrees
-    params.leaf_size = 0.025;        // 2.5cm voxel size
-
-    // Robot parameters - adjusted for coordinate system where robot is at bottom
-    params.robot_height = 0.5;      // Robot at z=0 (bottom of scene)
-    params.initialization_range = 0.5;  // 0.5m initialization range
-    params.ground_height_buffer = 0.05;  // 5cm ground buffer (more lenient)
-
-    // Stair parameters
-    params.min_stair_count = 3;
-    params.stair_slope_min = 0.35;   // ~11 degrees
-    params.stair_slope_max = 1.22;   // ~50 degrees
-
-    params.min_stair_width = 0.75;   // 75cm minimum width
-    params.min_stair_height = 0.11;  // 11cm minimum height
-    params.max_stair_height = 0.3; // 30cm maximum height
-    params.min_stair_depth = 0.15;   // 15cm minimum depth
-    params.max_stair_depth = 0.45;   // 45cm maximum depth
-    params.max_stair_curvature = 0.55; // Maximum curvature
-
-    // Point cloud bounds (robot-centered) - adjusted for your data
-    params.x_max = 5.0;   // 5m forward
-    params.x_min = -2.0;  // 2m backward (your data goes to -1.5)
-    params.y_max = 3.0;   // 3m left
-    params.y_min = -3.0;  // 3m right
-    params.z_max = 4.0;   // 4m up (your data goes to 3.6)
-    params.z_min = -1.0;  // 1m down
-
-    return params;
-}
-
-stair_utility::LineExtractorParams createDefaultLineParams() {
-    stair_utility::LineExtractorParams params;
-    params.bearing_var = 0.0001;
-    params.range_var = 0.001;
-    params.z_var = 0.0004;
-    params.least_sq_angle_thresh = 0.05;
-    params.least_sq_radius_thresh = 0.075;
-    params.max_line_gap = 0.2;
-    params.min_line_length = 0.75;
-    params.min_range = 0.1;
-    params.max_range = 5.0;
-    params.min_split_dist = 0.2;
-    params.outlier_dist = 0.2;
-    params.min_line_points = 7;
-    return params;
-}
 
 void printStaircaseResults(const stair_utility::StaircaseMeasurement& stair_measurement, const std::string& direction) {
     std::cout << "\n=== " << direction << " Staircase Detected ===\n";
@@ -143,9 +91,23 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr generateSampleStaircase() {
 int main(int argc, char** argv) {
     std::cout << "=== Staircase Detector Standalone Test (Phase 1) ===\n";
 
-    // Create parameters
-    auto detector_params = createDefaultDetectorParams();
-    auto line_params = createDefaultLineParams();
+    // Load configuration
+    std::string config_file = "../config/standalone_detection_config.yaml";
+    if (argc > 2) {
+        config_file = argv[2];
+    }
+
+    std::cout << "Loading config from: " << config_file << "\n";
+    stair_utility::ConfigParser config(config_file);
+
+    // Create parameters from config
+    auto detector_params = config.getDetectorParams();
+    auto line_params = config.getLineExtractorParams();
+
+    // Set line extractor min_line_length equal to stair param min_stair_width
+    line_params.min_line_length = detector_params.min_stair_width;
+
+    std::cout << "Using min_line_length = min_stair_width = " << line_params.min_line_length << "m\n";
 
     // Initialize detector
     std::cout << "Initializing StairDetector...\n";

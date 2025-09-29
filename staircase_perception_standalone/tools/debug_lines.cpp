@@ -8,23 +8,8 @@
 #include "staircase_perception_standalone/core/stair_detector.hpp"
 #include "staircase_perception_standalone/utils/stair_utilities.hpp"
 #include "staircase_perception_standalone/utils/line_extraction/line_extractor.hpp"
+#include "staircase_perception_standalone/utils/config_parser.hpp"
 
-stair_utility::LineExtractorParams createDefaultLineParams() {
-    stair_utility::LineExtractorParams params;
-    params.bearing_var = 0.0001;
-    params.range_var = 0.001;
-    params.z_var = 0.0004;
-    params.least_sq_angle_thresh = 0.05;
-    params.least_sq_radius_thresh = 0.075;
-    params.max_line_gap = 0.2;
-    params.min_line_length = 0.75;
-    params.min_range = 0.1;
-    params.max_range = 5.0;
-    params.min_split_dist = 0.2;
-    params.outlier_dist = 0.2;
-    params.min_line_points = 7;
-    return params;
-}
 
 void saveLineVisualization(const std::vector<Line>& lines, const std::string& filename) {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr line_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -181,8 +166,16 @@ int main(int argc, char** argv) {
 
     std::cout << "Loaded projection: " << projection->size() << " points\n";
 
-    // Create line extraction parameters
-    auto line_params = createDefaultLineParams();
+    // Load configuration
+    std::string config_file = "../config/standalone_detection_config.yaml";
+    stair_utility::ConfigParser config(config_file);
+
+    // Create parameters from config
+    auto detector_params = config.getDetectorParams();
+    auto line_params = config.getLineExtractorParams();
+
+    // Set line extractor min_line_length equal to stair param min_stair_width
+    line_params.min_line_length = detector_params.min_stair_width;
 
     // Debug line extraction on the loaded projection
     std::string projection_name = projection_file.substr(projection_file.find_last_of("/") + 1);

@@ -75,6 +75,15 @@ target_link_libraries(line_extraction
   Eigen3::Eigen
 )
 
+# Config parser library
+add_library(config_parser
+  src/utils/config_parser.cpp
+)
+
+target_link_libraries(config_parser
+  Eigen3::Eigen
+)
+
 # StairDetector library
 add_library(stair_detector
   src/core/stair_detector.cpp
@@ -82,6 +91,7 @@ add_library(stair_detector
 
 target_link_libraries(stair_detector
   line_extraction
+  config_parser
   ${PCL_LIBRARIES}
   Eigen3::Eigen
 )
@@ -93,6 +103,7 @@ add_executable(test_detector_only
 
 target_link_libraries(test_detector_only
   stair_detector
+  config_parser
   ${PCL_LIBRARIES}
   Eigen3::Eigen
 )
@@ -131,13 +142,14 @@ add_executable(debug_lines
 
 target_link_libraries(debug_lines
   stair_detector
+  config_parser
   ${PCL_LIBRARIES}
   Eigen3::Eigen
 )
 
 
 # Install targets
-install(TARGETS stair_detector line_extraction test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply debug_lines
+install(TARGETS stair_detector line_extraction config_parser test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply debug_lines
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
