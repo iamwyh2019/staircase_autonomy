@@ -203,3 +203,4 @@ staircase_perception_standalone/data
 
 # RealSense point cloud files
 realsense_utils/pointclouds/
+.claude/settings.local.json
