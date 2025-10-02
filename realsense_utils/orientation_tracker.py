@@ -154,12 +154,17 @@ class OrientationTracker:
             ])
 
             # Rotation around X-axis (forward) to correct roll (left/right tilt)
-            cos_x, sin_x = math.cos(-corrected_roll), math.sin(-corrected_roll)
+            # Fix: apply correction in opposite direction
+            cos_x, sin_x = math.cos(corrected_roll), math.sin(corrected_roll)  # Removed negative sign
             R_x = np.array([
                 [1, 0, 0],
                 [0, cos_x, -sin_x],
                 [0, sin_x, cos_x]
             ])
+
+            # Debug output
+            if abs(corrected_roll) > 0.1 or abs(corrected_pitch) > 0.1:  # Only print when corrections are significant
+                print(f"Applying corrections: Pitch={math.degrees(corrected_pitch):.1f}°, Roll={math.degrees(corrected_roll):.1f}°")
 
             return R_y @ R_x
 
