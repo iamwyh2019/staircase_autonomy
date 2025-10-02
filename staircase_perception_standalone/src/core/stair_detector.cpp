@@ -688,11 +688,11 @@ bool StairDetector::searchForDescendingStairs(){
 if(verbose_)         std::cout << "\033[0;35m[Descending] Searching for initial stair pair (from top to bottom)...\033[0m" << std::endl;
         for(int ind = detected_lines_below_.size() - 1; ind >= 0; ind--){
             std::shared_ptr<std::deque<stair_utility::DetectedLine>> curr_lines = detected_lines_below_[ind];
-            if(curr_lines->size() > 0) {
+            if(verbose_ && curr_lines->size() > 0) {
                 std::cout << "\033[0;35m[Descending] Slice " << ind << " has " << curr_lines->size() << " lines\033[0m" << std::endl;
             }
             if(ind < ground_index_ - stair_initialization_range_){
-                std::cout << "\033[0;33m[Descending] Exceeded initialization range without finding stair pair\033[0m" << std::endl;
+                if(verbose_) std::cout << "\033[0;33m[Descending] Exceeded initialization range without finding stair pair\033[0m" << std::endl;
                 break;
             }
             
