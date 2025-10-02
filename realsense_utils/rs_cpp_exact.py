@@ -136,7 +136,7 @@ class CppVisualizer:
         self.ax_pitch.set_ylim([-180, 180])
         self.ax_pitch.set_xlabel('Time (s)')
         self.ax_pitch.set_ylabel('Pitch (degrees)')
-        self.ax_pitch.set_title('Pitch (X-axis)')
+        self.ax_pitch.set_title('Pitch (Y-axis)')
         self.ax_pitch.grid(True)
 
         # Roll plot setup
@@ -144,7 +144,7 @@ class CppVisualizer:
         self.ax_roll.set_ylim([-180, 180])
         self.ax_roll.set_xlabel('Time (s)')
         self.ax_roll.set_ylabel('Roll (degrees)')
-        self.ax_roll.set_title('Roll (Z-axis)')
+        self.ax_roll.set_title('Roll (X-axis)')
         self.ax_roll.grid(True)
 
         # Data for plots
@@ -257,11 +257,11 @@ class CppVisualizer:
         self.ax_pitch.set_ylim([-180, 180])
         self.ax_pitch.set_xlabel('Time (s)')
         self.ax_pitch.set_ylabel('Pitch (degrees)')
-        self.ax_pitch.set_title('Pitch (X-axis) - Traditional pitch')
+        self.ax_pitch.set_title('Pitch (Y-axis)')
         self.ax_pitch.grid(True)
-        self.ax_pitch.axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Horizontal')
-        self.ax_pitch.axhline(y=90, color='g', linestyle='--', alpha=0.5, label='Up')
-        self.ax_pitch.axhline(y=-90, color='g', linestyle='--', alpha=0.5, label='Down')
+        self.ax_pitch.axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Level')
+        self.ax_pitch.axhline(y=90, color='g', linestyle='--', alpha=0.5, label='+90°')
+        self.ax_pitch.axhline(y=-90, color='g', linestyle='--', alpha=0.5, label='-90°')
         self.ax_pitch.legend()
 
         # Update roll plot
@@ -271,11 +271,11 @@ class CppVisualizer:
         self.ax_roll.set_ylim([-180, 180])
         self.ax_roll.set_xlabel('Time (s)')
         self.ax_roll.set_ylabel('Roll (degrees)')
-        self.ax_roll.set_title('Roll (Z-axis) - Robust vertical')
+        self.ax_roll.set_title('Roll (X-axis)')
         self.ax_roll.grid(True)
-        self.ax_roll.axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Horizontal')
-        self.ax_roll.axhline(y=90, color='g', linestyle='--', alpha=0.5, label='Up')
-        self.ax_roll.axhline(y=-90, color='g', linestyle='--', alpha=0.5, label='Down')
+        self.ax_roll.axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Level')
+        self.ax_roll.axhline(y=90, color='g', linestyle='--', alpha=0.5, label='+90°')
+        self.ax_roll.axhline(y=-90, color='g', linestyle='--', alpha=0.5, label='-90°')
         self.ax_roll.legend()
 
         self.fig.canvas.draw()

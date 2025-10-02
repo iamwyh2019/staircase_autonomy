@@ -11,7 +11,9 @@ import cv2
 import time
 import os
 import argparse
+import math
 from datetime import datetime
+from orientation_tracker import OrientationTracker
 
 
 def save_ply(points, colors, filename):
@@ -76,14 +78,14 @@ def transform_coordinates(points):
     return transformed
 
 
-def setup_camera(visual_preset=4):
+def setup_camera(visual_preset=4, width=424, height=240):
     """Setup RealSense camera with optimal settings for point cloud capture"""
     pipeline = rs.pipeline()
     config = rs.config()
 
-    # Configure streams - 640x480 optimal for 1 point per 2.5cm at 5m range
-    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    # Configure streams - 424x240 optimal for 1 point per 2.5cm at 5m range
+    config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
 
     print("Starting RealSense pipeline...")
     profile = pipeline.start(config)
@@ -117,7 +119,7 @@ def setup_camera(visual_preset=4):
     return pipeline, align, depth_intrinsics
 
 
-def capture_point_cloud(pipeline, align, depth_intrinsics, max_distance=3.0):
+def capture_point_cloud(pipeline, align, depth_intrinsics, orientation_tracker=None, max_distance=3.0):
     """
     Capture a single point cloud frame
 
@@ -174,6 +176,12 @@ def capture_point_cloud(pipeline, align, depth_intrinsics, max_distance=3.0):
     # Transform to target coordinate system (X=forward, Y=left, Z=up)
     points = transform_coordinates(points_rs)
 
+    # Apply gravity alignment if available
+    if orientation_tracker and orientation_tracker.is_ready():
+        R = orientation_tracker.get_rotation_matrix()
+        points = points @ R.T
+        print("Applied gravity alignment")
+
     # Get corresponding RGB colors
     colors = color_image[v, u]  # BGR format
     colors = colors[:, [2, 1, 0]]  # Convert BGR to RGB
@@ -181,13 +189,17 @@ def capture_point_cloud(pipeline, align, depth_intrinsics, max_distance=3.0):
     return points, colors
 
 
-def live_preview(pipeline, align, depth_intrinsics, max_distance=5.0):
+def live_preview(pipeline, align, depth_intrinsics, orientation_tracker=None, max_distance=5.0):
     """Live preview with capture capability"""
     print("\nLive Preview Mode")
     print("Controls:")
     print("  SPACE - Capture point cloud")
     print("  's'   - Save current frame as image")
     print("  'q'   - Quit")
+    if orientation_tracker:
+        print("  Gravity alignment: ENABLED")
+    else:
+        print("  Gravity alignment: DISABLED")
     print("-" * 40)
 
     capture_count = 0
@@ -222,9 +234,16 @@ def live_preview(pipeline, align, depth_intrinsics, max_distance=5.0):
             # Show images vertically stacked
             images = np.vstack((color_image, depth_colormap))
 
-            # Add capture count overlay
-            cv2.putText(images, f"Captured: {capture_count}", (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # Add status overlay
+            status_text = f"Captured: {capture_count}"
+            if orientation_tracker and orientation_tracker.is_ready():
+                pitch, roll, yaw = orientation_tracker.get_orientation()
+                status_text += f" | P:{pitch:.1f}° R:{roll:.1f}°"
+            elif orientation_tracker:
+                status_text += " | IMU: Initializing"
+
+            cv2.putText(images, status_text, (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
             cv2.imshow('RealSense Live Preview (Color | Depth)', images)
 
@@ -233,7 +252,7 @@ def live_preview(pipeline, align, depth_intrinsics, max_distance=5.0):
                 break
             elif key == ord(' '):  # Spacebar to capture
                 print("Capturing point cloud...")
-                points, colors = capture_point_cloud(pipeline, align, depth_intrinsics, max_distance)
+                points, colors = capture_point_cloud(pipeline, align, depth_intrinsics, orientation_tracker, max_distance)
 
                 if points is not None:
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -260,7 +279,7 @@ def live_preview(pipeline, align, depth_intrinsics, max_distance=5.0):
         cv2.destroyAllWindows()
 
 
-def capture_single(pipeline, align, depth_intrinsics, filename=None):
+def capture_single(pipeline, align, depth_intrinsics, orientation_tracker=None, filename=None):
     """Capture a single point cloud and save it"""
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -273,7 +292,7 @@ def capture_single(pipeline, align, depth_intrinsics, filename=None):
     for i in range(10):
         pipeline.wait_for_frames()
 
-    points, colors = capture_point_cloud(pipeline, align, depth_intrinsics)
+    points, colors = capture_point_cloud(pipeline, align, depth_intrinsics, orientation_tracker)
 
     if points is not None:
         if save_ply(points, colors, filename):
@@ -299,27 +318,58 @@ def main():
                        help='Maximum capture distance in meters (default: 4.0)')
     parser.add_argument('--visual-preset', '-p', type=int, default=4,
                        help='Visual preset: 0=Custom, 1=Default, 2=Hand, 3=High Accuracy, 4=High Density, 5=Medium Density (default: 4)')
+    parser.add_argument('--resolution', '-r', type=str, default='424x240',
+                       help='Camera resolution: 424x240, 640x480, 848x480, 1280x720 (default: 424x240)')
+    parser.add_argument('--no-gravity-align', action='store_true',
+                       help='Disable gravity alignment correction')
 
     args = parser.parse_args()
+
+    # Parse resolution
+    try:
+        width, height = map(int, args.resolution.split('x'))
+    except ValueError:
+        print(f"Error: Invalid resolution format '{args.resolution}'. Use format like '424x240'")
+        return 1
 
     print("RealSense PLY Point Cloud Capture")
     print("=================================")
     print("Coordinate system: X=forward, Y=left, Z=up")
+    print(f"Resolution: {width}x{height}")
     print(f"Max distance: {args.max_distance}m")
     print(f"Visual preset: {args.visual_preset}")
+    print(f"Gravity alignment: {'Disabled' if args.no_gravity_align else 'Enabled'}")
+
+    # Calculate and show point spacing
+    fov_h = 86  # degrees
+    fov_v = 57  # degrees
+    spacing_h = (2 * args.max_distance * math.tan(math.radians(fov_h/2))) / width * 100
+    spacing_v = (2 * args.max_distance * math.tan(math.radians(fov_v/2))) / height * 100
+    print(f"Point spacing at {args.max_distance}m: {spacing_h:.1f}cm x {spacing_v:.1f}cm")
     print()
+
+    # Start orientation tracker
+    orientation_tracker = None
+    if not args.no_gravity_align:
+        print("Starting orientation tracker...")
+        orientation_tracker = OrientationTracker()
+        if not orientation_tracker.start():
+            print("Warning: Failed to start orientation tracker. Continuing without gravity alignment.")
+            orientation_tracker = None
 
     try:
         # Setup camera
-        pipeline, align, depth_intrinsics = setup_camera(args.visual_preset)
+        pipeline, align, depth_intrinsics = setup_camera(args.visual_preset, width, height)
 
         if args.single:
             # Single capture mode
-            success = capture_single(pipeline, align, depth_intrinsics, args.output)
+            if orientation_tracker:
+                time.sleep(1.0)  # Allow tracker to initialize
+            success = capture_single(pipeline, align, depth_intrinsics, orientation_tracker, args.output)
             return 0 if success else 1
         else:
             # Live preview mode
-            live_preview(pipeline, align, depth_intrinsics, args.max_distance)
+            live_preview(pipeline, align, depth_intrinsics, orientation_tracker, args.max_distance)
             return 0
 
     except Exception as e:
@@ -327,6 +377,8 @@ def main():
         return 1
 
     finally:
+        if orientation_tracker:
+            orientation_tracker.stop()
         try:
             pipeline.stop()
         except:

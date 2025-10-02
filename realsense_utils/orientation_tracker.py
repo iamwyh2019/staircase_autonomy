@@ -100,50 +100,68 @@ class OrientationTracker:
 
         Returns:
             tuple: (pitch, roll, yaw) in degrees
-                   pitch: rotation around X-axis (up/down tilt)
+                   pitch: rotation around Y-axis (up/down tilt) - VERTICAL movement
                    roll: rotation around Z-axis (left/right tilt)
-                   yaw: rotation around Y-axis (left/right turn)
+                   yaw: rotation around X-axis (left/right turn)
         """
         with self.theta_mtx:
-            pitch = math.degrees(self.theta.x)
-            roll = math.degrees(self.theta.z)  # This is the robust vertical axis
+            # Fix the axis mapping:
+            # theta.z is the robust VERTICAL axis = should be PITCH (up/down)
+            # theta.x should be ROLL (left/right tilt)
+            pitch = math.degrees(self.theta.z)  # Robust vertical = pitch
+            roll = math.degrees(self.theta.x)   # Left/right tilt = roll
             yaw = math.degrees(self.theta.y)
             return pitch, roll, yaw
 
     def get_rotation_matrix(self):
         """
         Get rotation matrix to transform points to gravity-aligned frame
+        Coordinate system: X=forward, Y=left, Z=up
 
         Returns:
             np.ndarray: 3x3 rotation matrix that corrects for camera tilt
                        Use: corrected_points = points @ R.T
         """
         with self.theta_mtx:
-            # Get roll and pitch (ignore yaw for gravity alignment)
-            pitch = self.theta.x
-            roll = self.theta.z  # The robust vertical axis
+            # RealSense IMU gives orientation in RealSense coordinate system
+            # Points have already been transformed to target system (X=forward, Y=left, Z=up)
 
-            # Create rotation matrices
-            cos_p, sin_p = math.cos(-pitch), math.sin(-pitch)  # Negative to correct
-            cos_r, sin_r = math.cos(-roll), math.sin(-roll)    # Negative to correct
+            # In our target coordinate system:
+            # - theta.x (IMU pitch) affects rotation around Y-axis (left/right tilt correction)
+            # - theta.z (IMU roll) affects rotation around X-axis (forward/back tilt correction)
 
-            # Pitch rotation (around X-axis)
-            R_pitch = np.array([
+            # Fix axis mapping to match corrected get_orientation():
+            # theta.z = pitch (up/down, vertical) = robust vertical axis
+            # theta.x = roll (left/right tilt)
+            raw_pitch = self.theta.z  # Vertical movement (robust)
+            raw_roll = self.theta.x   # Left/right tilt
+
+            # When P=-90, R=0 is perfectly aligned (no correction needed)
+            # So we need to apply correction relative to this reference
+            corrected_pitch = raw_pitch - math.radians(-90)  # P=-90 is the target
+            corrected_roll = raw_roll - 0                    # R=0 is the target
+
+            # For gravity alignment in target coordinate system (X=forward, Y=left, Z=up):
+            # - Pitch correction: rotate around Y-axis to make table parallel to X-Y plane
+            # - Roll correction: rotate around X-axis to level left/right tilt
+
+            # Rotation around Y-axis (left) to correct pitch (up/down tilt)
+            cos_y, sin_y = math.cos(-corrected_pitch), math.sin(-corrected_pitch)
+            R_y = np.array([
+                [cos_y, 0, sin_y],
+                [0, 1, 0],
+                [-sin_y, 0, cos_y]
+            ])
+
+            # Rotation around X-axis (forward) to correct roll (left/right tilt)
+            cos_x, sin_x = math.cos(-corrected_roll), math.sin(-corrected_roll)
+            R_x = np.array([
                 [1, 0, 0],
-                [0, cos_p, -sin_p],
-                [0, sin_p, cos_p]
+                [0, cos_x, -sin_x],
+                [0, sin_x, cos_x]
             ])
 
-            # Roll rotation (around Z-axis)
-            R_roll = np.array([
-                [cos_r, -sin_r, 0],
-                [sin_r, cos_r, 0],
-                [0, 0, 1]
-            ])
-
-            # Combined rotation (apply roll then pitch)
-            R = R_pitch @ R_roll
-            return R
+            return R_y @ R_x
 
     def get_gravity_aligned_transform(self):
         """
