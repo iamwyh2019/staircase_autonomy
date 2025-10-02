@@ -11,6 +11,7 @@ import time
 import math
 import sys
 import argparse
+from orientation_tracker import OrientationTracker
 
 # Optional visualization imports
 try:
@@ -351,13 +352,11 @@ def main():
         visualizer = CppVisualizer()
         print("✓ Visualization enabled")
 
-    # Start IMU streaming
-    pipeline, profile = start_imu_streaming()
-    if pipeline is None:
+    # Create orientation tracker (using the shared API)
+    estimator = OrientationTracker()
+    if not estimator.start():
+        print("Failed to start orientation tracker")
         return -1
-
-    # Create EXACT C++ estimator
-    estimator = RotationEstimatorCpp()
 
     try:
         print("\nIMU streaming started. Press Ctrl+C to stop.")
@@ -370,45 +369,33 @@ def main():
 
         while True:
             try:
-                frames = pipeline.wait_for_frames(timeout_ms=5000)
-
-                for i in range(frames.size()):
-                    frame = frames[i]
-
-                    if frame.is_motion_frame():
-                        motion_frame = frame.as_motion_frame()
-
-                        if motion_frame.get_profile().stream_type() == rs.stream.gyro:
-                            ts = motion_frame.get_timestamp()
-                            gyro_data = motion_frame.get_motion_data()
-                            estimator.process_gyro(gyro_data, ts)
-
-                        elif motion_frame.get_profile().stream_type() == rs.stream.accel:
-                            accel_data = motion_frame.get_motion_data()
-                            estimator.process_accel(accel_data)
-
                 current_time = time.time()
 
                 # Update visualization at 30 Hz
                 if visualizer and (current_time - last_viz_time >= 1/30.0):
-                    theta = estimator.get_theta()
-                    visualizer.update(theta)
+                    if estimator.is_ready():
+                        # Convert to Vector3 for compatibility with existing visualizer
+                        pitch, roll, yaw = estimator.get_orientation()
+                        theta = Vector3(math.radians(pitch), math.radians(yaw), math.radians(roll))
+                        visualizer.update(theta)
                     last_viz_time = current_time
 
                 # Print at 5 Hz
                 if current_time - last_print_time >= 0.2:
-                    theta = estimator.get_theta()
-                    x_deg = math.degrees(theta.x)
-                    y_deg = math.degrees(theta.y)
-                    z_deg = math.degrees(theta.z)  # This is the robust vertical movement!
+                    if estimator.is_ready():
+                        pitch_deg, roll_deg, yaw_deg = estimator.get_orientation()
 
-                    elapsed = current_time - start_time
-                    print(f"\rTime: {elapsed:6.1f}s | "
-                          f"X: {x_deg:7.2f}° | "
-                          f"Y: {y_deg:7.2f}° | "
-                          f"Z(Vertical): {z_deg:7.2f}°", end="", flush=True)
+                        elapsed = current_time - start_time
+                        print(f"\rTime: {elapsed:6.1f}s | "
+                              f"Pitch: {pitch_deg:7.2f}° | "
+                              f"Yaw: {yaw_deg:7.2f}° | "
+                              f"Roll: {roll_deg:7.2f}°", end="", flush=True)
+                    else:
+                        print(f"\rInitializing...", end="", flush=True)
 
                     last_print_time = current_time
+
+                time.sleep(0.01)  # Small sleep to prevent CPU spinning
 
             except RuntimeError as e:
                 if "timeout" in str(e).lower():
@@ -420,10 +407,7 @@ def main():
     except KeyboardInterrupt:
         print("\n\nStopping...")
     finally:
-        try:
-            pipeline.stop()
-        except:
-            pass
+        estimator.stop()
 
     return 0
 
