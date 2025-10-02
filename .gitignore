@@ -200,3 +200,6 @@ cython_debug/
 
 # data
 staircase_perception_standalone/data
+
+# RealSense point cloud files
+realsense_utils/pointclouds/

@@ -76,41 +76,28 @@ def transform_coordinates(points):
     return transformed
 
 
-def setup_camera():
+def setup_camera(visual_preset=4):
     """Setup RealSense camera with optimal settings for point cloud capture"""
     pipeline = rs.pipeline()
     config = rs.config()
 
-    # Configure streams - use high resolution for better quality
-    config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-    config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+    # Configure streams - 640x480 optimal for 1 point per 2.5cm at 5m range
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
     print("Starting RealSense pipeline...")
-    try:
-        profile = pipeline.start(config)
-    except Exception as e:
-        print(f"Failed to start high-res config: {e}")
-        print("Trying fallback configuration...")
-
-        # Fallback to lower resolution
-        config = rs.config()
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        profile = pipeline.start(config)
+    profile = pipeline.start(config)
 
     # Get device and enable depth sensor improvements
     device = profile.get_device()
     depth_sensor = device.first_depth_sensor()
 
     # Apply settings to improve depth quality
+    if depth_sensor.supports(rs.option.visual_preset):
+        depth_sensor.set_option(rs.option.visual_preset, visual_preset)
+
     if depth_sensor.supports(rs.option.laser_power):
         depth_sensor.set_option(rs.option.laser_power, 360)  # Max laser power
-
-    if depth_sensor.supports(rs.option.confidence_threshold):
-        depth_sensor.set_option(rs.option.confidence_threshold, 1)  # Lower threshold
-
-    if depth_sensor.supports(rs.option.noise_filtering):
-        depth_sensor.set_option(rs.option.noise_filtering, 4)  # Higher filtering
 
     # Create alignment object
     align_to = rs.stream.color
@@ -194,7 +181,7 @@ def capture_point_cloud(pipeline, align, depth_intrinsics, max_distance=3.0):
     return points, colors
 
 
-def live_preview(pipeline, align, depth_intrinsics):
+def live_preview(pipeline, align, depth_intrinsics, max_distance=5.0):
     """Live preview with capture capability"""
     print("\nLive Preview Mode")
     print("Controls:")
@@ -227,12 +214,13 @@ def live_preview(pipeline, align, depth_intrinsics):
                 cv2.COLORMAP_JET
             )
 
-            # Remove background beyond 3m
-            mask = (depth_image > 3000) | (depth_image <= 0)
+            # Remove background beyond max distance
+            max_depth_mm = max_distance * 1000
+            mask = (depth_image > max_depth_mm) | (depth_image <= 0)
             depth_colormap[mask] = [64, 64, 64]
 
-            # Show images side by side
-            images = np.hstack((color_image, depth_colormap))
+            # Show images vertically stacked
+            images = np.vstack((color_image, depth_colormap))
 
             # Add capture count overlay
             cv2.putText(images, f"Captured: {capture_count}", (10, 30),
@@ -245,11 +233,12 @@ def live_preview(pipeline, align, depth_intrinsics):
                 break
             elif key == ord(' '):  # Spacebar to capture
                 print("Capturing point cloud...")
-                points, colors = capture_point_cloud(pipeline, align, depth_intrinsics)
+                points, colors = capture_point_cloud(pipeline, align, depth_intrinsics, max_distance)
 
                 if points is not None:
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    filename = f"pointcloud_{timestamp}.ply"
+                    os.makedirs("pointclouds", exist_ok=True)
+                    filename = f"pointclouds/pointcloud_{timestamp}.ply"
 
                     if save_ply(points, colors, filename):
                         capture_count += 1
@@ -275,7 +264,8 @@ def capture_single(pipeline, align, depth_intrinsics, filename=None):
     """Capture a single point cloud and save it"""
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"pointcloud_{timestamp}.ply"
+        os.makedirs("pointclouds", exist_ok=True)
+        filename = f"pointclouds/pointcloud_{timestamp}.ply"
 
     print("Capturing single point cloud...")
 
@@ -305,8 +295,10 @@ def main():
                        help='Output PLY filename (default: timestamped)')
     parser.add_argument('--single', '-s', action='store_true',
                        help='Capture single point cloud and exit')
-    parser.add_argument('--max-distance', '-d', type=float, default=3.0,
-                       help='Maximum capture distance in meters (default: 3.0)')
+    parser.add_argument('--max-distance', '-d', type=float, default=4.0,
+                       help='Maximum capture distance in meters (default: 4.0)')
+    parser.add_argument('--visual-preset', '-p', type=int, default=4,
+                       help='Visual preset: 0=Custom, 1=Default, 2=Hand, 3=High Accuracy, 4=High Density, 5=Medium Density (default: 4)')
 
     args = parser.parse_args()
 
@@ -314,11 +306,12 @@ def main():
     print("=================================")
     print("Coordinate system: X=forward, Y=left, Z=up")
     print(f"Max distance: {args.max_distance}m")
+    print(f"Visual preset: {args.visual_preset}")
     print()
 
     try:
         # Setup camera
-        pipeline, align, depth_intrinsics = setup_camera()
+        pipeline, align, depth_intrinsics = setup_camera(args.visual_preset)
 
         if args.single:
             # Single capture mode
@@ -326,7 +319,7 @@ def main():
             return 0 if success else 1
         else:
             # Live preview mode
-            live_preview(pipeline, align, depth_intrinsics)
+            live_preview(pipeline, align, depth_intrinsics, args.max_distance)
             return 0
 
     except Exception as e:

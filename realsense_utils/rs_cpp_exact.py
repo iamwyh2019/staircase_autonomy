@@ -114,11 +114,12 @@ class CppVisualizer:
         if not MATPLOTLIB_AVAILABLE:
             raise ImportError("Matplotlib not available")
 
-        self.fig = plt.figure(figsize=(12, 8))
+        self.fig = plt.figure(figsize=(18, 6))
 
-        # Create two subplots
-        self.ax3d = self.fig.add_subplot(121, projection='3d')
-        self.ax2d = self.fig.add_subplot(122)
+        # Create three subplots: 3D view and two line charts
+        self.ax3d = self.fig.add_subplot(131, projection='3d')
+        self.ax_pitch = self.fig.add_subplot(132)
+        self.ax_roll = self.fig.add_subplot(133)
 
         # 3D plot setup
         self.ax3d.set_xlim([-2, 2])
@@ -129,17 +130,26 @@ class CppVisualizer:
         self.ax3d.set_zlabel('Z')
         self.ax3d.set_title('Camera Orientation (Exact C++)')
 
-        # 2D pitch plot setup
-        self.ax2d.set_xlim([0, 60])  # 60 seconds of data
-        self.ax2d.set_ylim([-180, 180])
-        self.ax2d.set_xlabel('Time (s)')
-        self.ax2d.set_ylabel('Pitch (degrees)')
-        self.ax2d.set_title('Pitch Over Time')
-        self.ax2d.grid(True)
+        # Pitch plot setup
+        self.ax_pitch.set_xlim([0, 60])  # 60 seconds of data
+        self.ax_pitch.set_ylim([-180, 180])
+        self.ax_pitch.set_xlabel('Time (s)')
+        self.ax_pitch.set_ylabel('Pitch (degrees)')
+        self.ax_pitch.set_title('Pitch (X-axis)')
+        self.ax_pitch.grid(True)
 
-        # Data for 2D plot
+        # Roll plot setup
+        self.ax_roll.set_xlim([0, 60])  # 60 seconds of data
+        self.ax_roll.set_ylim([-180, 180])
+        self.ax_roll.set_xlabel('Time (s)')
+        self.ax_roll.set_ylabel('Roll (degrees)')
+        self.ax_roll.set_title('Roll (Z-axis)')
+        self.ax_roll.grid(True)
+
+        # Data for plots
         self.time_data = []
         self.pitch_data = []
+        self.roll_data = []
         self.start_time = time.time()
 
         plt.tight_layout()
@@ -227,28 +237,45 @@ class CppVisualizer:
         self.ax3d.set_title(f'Exact C++ Algorithm\nX: {pitch_deg:.1f}° Y: {yaw_deg:.1f}° Z(Vertical): {roll_deg:.1f}°')
         self.ax3d.legend()
 
-        # Update 2D pitch plot - USE ROLL as the vertical movement
+        # Update both pitch and roll plots
         current_time = time.time() - self.start_time
         self.time_data.append(current_time)
-        self.pitch_data.append(roll_deg)  # CORRECTED: Use roll for vertical tracking
+        self.pitch_data.append(pitch_deg)  # X-axis (traditional pitch)
+        self.roll_data.append(roll_deg)    # Z-axis (the robust vertical one)
 
         # Keep only last 60 seconds
         while len(self.time_data) > 0 and self.time_data[0] < current_time - 60:
             self.time_data.pop(0)
             self.pitch_data.pop(0)
+            self.roll_data.pop(0)
 
-        self.ax2d.clear()
-        self.ax2d.plot(self.time_data, self.pitch_data, 'b-', linewidth=2)
-        self.ax2d.set_xlim([max(0, current_time-60), current_time])
-        self.ax2d.set_ylim([-180, 180])
-        self.ax2d.set_xlabel('Time (s)')
-        self.ax2d.set_ylabel('Vertical Angle (degrees)')
-        self.ax2d.set_title('Vertical Movement Over Time (Z-axis - Should be stable!)')
-        self.ax2d.grid(True)
-        self.ax2d.axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Horizontal')
-        self.ax2d.axhline(y=90, color='g', linestyle='--', alpha=0.5, label='Pointing Up')
-        self.ax2d.axhline(y=-90, color='g', linestyle='--', alpha=0.5, label='Pointing Down')
-        self.ax2d.legend()
+        # Update pitch plot
+        self.ax_pitch.clear()
+        self.ax_pitch.plot(self.time_data, self.pitch_data, 'b-', linewidth=2)
+        self.ax_pitch.set_xlim([max(0, current_time-60), current_time])
+        self.ax_pitch.set_ylim([-180, 180])
+        self.ax_pitch.set_xlabel('Time (s)')
+        self.ax_pitch.set_ylabel('Pitch (degrees)')
+        self.ax_pitch.set_title('Pitch (X-axis) - Traditional pitch')
+        self.ax_pitch.grid(True)
+        self.ax_pitch.axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Horizontal')
+        self.ax_pitch.axhline(y=90, color='g', linestyle='--', alpha=0.5, label='Up')
+        self.ax_pitch.axhline(y=-90, color='g', linestyle='--', alpha=0.5, label='Down')
+        self.ax_pitch.legend()
+
+        # Update roll plot
+        self.ax_roll.clear()
+        self.ax_roll.plot(self.time_data, self.roll_data, 'r-', linewidth=2)
+        self.ax_roll.set_xlim([max(0, current_time-60), current_time])
+        self.ax_roll.set_ylim([-180, 180])
+        self.ax_roll.set_xlabel('Time (s)')
+        self.ax_roll.set_ylabel('Roll (degrees)')
+        self.ax_roll.set_title('Roll (Z-axis) - Robust vertical')
+        self.ax_roll.grid(True)
+        self.ax_roll.axhline(y=0, color='r', linestyle='--', alpha=0.5, label='Horizontal')
+        self.ax_roll.axhline(y=90, color='g', linestyle='--', alpha=0.5, label='Up')
+        self.ax_roll.axhline(y=-90, color='g', linestyle='--', alpha=0.5, label='Down')
+        self.ax_roll.legend()
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
