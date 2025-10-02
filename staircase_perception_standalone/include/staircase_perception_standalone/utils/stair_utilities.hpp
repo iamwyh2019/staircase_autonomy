@@ -42,8 +42,9 @@ namespace stair_utility
     };
 
     struct StaircaseDetectorParams{
-        
+
         bool use_ramp_detection;
+        bool verbose = false;  // Verbose logging flag
 
         double angle_resolution;
         double leaf_size;
@@ -55,7 +56,7 @@ namespace stair_utility
         int min_stair_count;
         double stair_slope_min;
         double stair_slope_max;
-        
+
         double min_stair_width;
         double min_stair_height;
         double max_stair_height;

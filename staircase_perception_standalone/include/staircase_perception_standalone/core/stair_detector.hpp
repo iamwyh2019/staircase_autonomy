@@ -71,6 +71,7 @@ class StairDetector
         float angle_resolution_, sector_size_;
         double y_min_, y_max_, z_min_, x_max_, z_max_, x_min_;
         bool use_ramp_detection_;
+        bool verbose_;  // Verbose logging flag
 
         int cloud_ang_width_, cloud_z_height_;
         int cloud_width_, cloud_length_;

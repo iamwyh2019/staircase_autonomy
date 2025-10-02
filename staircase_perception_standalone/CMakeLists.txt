@@ -135,10 +135,19 @@ target_link_libraries(pcd_to_ply
   ${PCL_LIBRARIES}
 )
 
+# Ground distance estimation tool
+add_executable(estimate_ground_distance
+  tools/estimate_ground_distance.cpp
+)
+
+target_link_libraries(estimate_ground_distance
+  ${PCL_LIBRARIES}
+)
+
 
 
 # Install targets
-install(TARGETS stair_detector line_extraction config_parser test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply
+install(TARGETS stair_detector line_extraction config_parser test_detector_only ply_to_pcd_converter inspect_pcd pcd_to_ply estimate_ground_distance
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin

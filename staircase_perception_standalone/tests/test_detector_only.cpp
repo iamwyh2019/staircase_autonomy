@@ -5,7 +5,6 @@
 #include <pcl/point_cloud.h>
 #include <pcl/filters/voxel_grid.h>
 #include <chrono>
-#include <numeric>
 
 #include "staircase_perception_standalone/core/stair_detector.hpp"
 #include "staircase_perception_standalone/utils/stair_utilities.hpp"
@@ -25,9 +24,9 @@ void saveLineVisualization(const std::vector<Line>& lines, const std::string& fi
         const auto& start = line.getStart();
         const auto& end = line.getEnd();
 
-        std::cout << "Line " << i << ": start(" << start[0] << "," << start[1] << "," << start[2]
-                  << ") end(" << end[0] << "," << end[1] << "," << end[2]
-                  << ") length=" << line.length() << std::endl;
+        // std::cout << "Line " << i << ": start(" << start[0] << "," << start[1] << "," << start[2]
+        //           << ") end(" << end[0] << "," << end[1] << "," << end[2]
+        //           << ") length=" << line.length() << std::endl;
 
         // Create points along the line for visualization
         int num_viz_points = 50;
@@ -60,9 +59,52 @@ void saveLineVisualization(const std::vector<Line>& lines, const std::string& fi
     pcl::io::savePLYFile(filename, *line_cloud, true);
 }
 
+
 void printStaircaseResults(const stair_utility::StaircaseMeasurement& stair_measurement, const std::string& direction) {
     std::cout << "\n=== " << direction << " Staircase Detected ===\n";
     std::cout << "Step count: " << static_cast<int>(stair_measurement.stair_count) << "\n";
+
+    // Compute average height, tread depth, and width
+    if (stair_measurement.steps.size() > 1) {
+        double total_height = 0.0;
+        double total_depth = 0.0;
+        double total_width = 0.0;
+        int k = stair_measurement.steps.size();
+
+        // Sum over i=1 to k-1 (comparing consecutive steps)
+        for (size_t i = 0; i < stair_measurement.steps.size() - 1; ++i) {
+            const auto& step_i = stair_measurement.steps[i];
+            const auto& step_i1 = stair_measurement.steps[i + 1];
+
+            // Height: ||p_s^{i+1} - p_s^i||_z + ||p_e^{i+1} - p_e^i||_z
+            double height_start = fabs(step_i1.start_p(2) - step_i.start_p(2));
+            double height_end = fabs(step_i1.end_p(2) - step_i.end_p(2));
+            total_height += (height_start + height_end);
+
+            // Tread depth: ||p_s^{i+1} - p_s^i||_xy + ||p_e^{i+1} - p_e^i||_xy
+            double depth_start = sqrt(pow(step_i1.start_p(0) - step_i.start_p(0), 2) +
+                                     pow(step_i1.start_p(1) - step_i.start_p(1), 2));
+            double depth_end = sqrt(pow(step_i1.end_p(0) - step_i.end_p(0), 2) +
+                                   pow(step_i1.end_p(1) - step_i.end_p(1), 2));
+            total_depth += (depth_start + depth_end);
+        }
+
+        // Average height: sum / (2 * k)
+        double avg_height = total_height / (2.0 * k);
+
+        // Average tread depth: sum / (2 * k)
+        double avg_depth = total_depth / (2.0 * k);
+
+        // Average width: average of all step widths
+        for (const auto& step : stair_measurement.steps) {
+            total_width += step.step_width;
+        }
+        double avg_width = total_width / k;
+
+        std::cout << "Average riser height: " << avg_height << "m\n";
+        std::cout << "Average tread depth: " << avg_depth << "m\n";
+        std::cout << "Average step width: " << avg_width << "m\n";
+    }
 
     for (size_t i = 0; i < stair_measurement.steps.size(); ++i) {
         const auto& step = stair_measurement.steps[i];
@@ -140,17 +182,34 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr generateSampleStaircase() {
 int main(int argc, char** argv) {
     std::cout << "=== Staircase Detector Standalone Test (Phase 1) ===\n";
 
-    // Load configuration
+    // Parse command line arguments
+    bool verbose = false;
+    std::string pcd_file_arg;
     std::string config_file = "../config/standalone_detection_config.yaml";
-    if (argc > 2) {
-        config_file = argv[2];
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-v" || arg == "--verbose") {
+            verbose = true;
+        } else if (arg == "-c" || arg == "--config") {
+            if (i + 1 < argc) {
+                config_file = argv[++i];
+            }
+        } else if (pcd_file_arg.empty()) {
+            pcd_file_arg = arg;
+        }
     }
 
     std::cout << "Loading config from: " << config_file << "\n";
+    if (verbose) {
+        std::cout << "Verbose mode: ENABLED\n";
+    }
+
     stair_utility::ConfigParser config(config_file);
 
     // Create parameters from config
     auto detector_params = config.getDetectorParams();
+    detector_params.verbose = verbose;  // Pass verbose flag to detector
     auto line_params = config.getLineExtractorParams();
 
     // Set line extractor min_line_length equal to stair param min_stair_width
@@ -165,13 +224,12 @@ int main(int argc, char** argv) {
     pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud;
 
     // Try to load PCD file if provided, otherwise generate synthetic data
-    if (argc > 1) {
-        std::string pcd_file = argv[1];
-        std::cout << "Loading point cloud from: " << pcd_file << "\n";
+    if (!pcd_file_arg.empty()) {
+        std::cout << "Loading point cloud from: " << pcd_file_arg << "\n";
 
         input_cloud.reset(new pcl::PointCloud<pcl::PointXYZI>);
-        if (pcl::io::loadPCDFile<pcl::PointXYZI>(pcd_file, *input_cloud) == -1) {
-            std::cerr << "Error: Could not read file " << pcd_file << "\n";
+        if (pcl::io::loadPCDFile<pcl::PointXYZI>(pcd_file_arg, *input_cloud) == -1) {
+            std::cerr << "Error: Could not read file " << pcd_file_arg << "\n";
             std::cout << "Falling back to synthetic data...\n";
             input_cloud = generateSampleStaircase();
         } else {
@@ -179,6 +237,7 @@ int main(int argc, char** argv) {
         }
     } else {
         std::cout << "No PCD file provided. Using synthetic staircase data.\n";
+        std::cout << "Usage: " << argv[0] << " [PCD_FILE] [-v|--verbose] [-c|--config CONFIG_FILE]\n";
         input_cloud = generateSampleStaircase();
     }
 
@@ -298,7 +357,7 @@ int main(int argc, char** argv) {
         // Save line visualization of actual detector lines
         if (all_detector_lines.size() > 0) {
             saveLineVisualization(all_detector_lines, "actual_detector_lines.ply");
-            std::cout << "Saved actual detector lines to: actual_detector_lines.ply" << std::endl;
+            // std::cout << "Saved actual detector lines to: actual_detector_lines.ply" << std::endl;
         }
     }
 
