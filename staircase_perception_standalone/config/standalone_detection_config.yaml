@@ -3,12 +3,12 @@
 stair_pointcloud:
   leaf_size: 0.025
   # Cloud Range Cropped for Search (robot-centered bounds)
-  min_range_x: -2.0   # 2m backward
-  max_range_x:  5.0   # 5m forward
+  min_range_x: -1.0   # 1m backward
+  max_range_x:  4.0   # 4m forward
   min_range_y: -3.0   # 3m right
   max_range_y:  3.0   # 3m left
   min_range_z: -2.5   # 2.5m down
-  max_range_z:  4.0   # 4m up
+  max_range_z:  1.5   # 1.5m up
 
 # Stair Detector Parameters
 stair_detector:
@@ -18,7 +18,7 @@ stair_detector:
 
   min_stair_width: 0.75       # Unit: Meters # Change this to change the minimum stair width that can be detected
 
-  min_stair_height: 0.11       # Unit: Meters # Change this to change the minimum stair height (rise) that can be detected
+  min_stair_height: 0.08       # Unit: Meters # Change this to change the minimum stair height (rise) that can be detected
   max_stair_height: 0.3      # Unit: Meters # Change this to change the maximum stair height (run) that can be detected
   min_stair_depth: 0.15      # Unit: Meters # Change this to change the minimum stair depth (run) that can be detected
   max_stair_depth: 0.45       # Unit: Meters # Change this to change the maximum stair depth (run) that can be detected
@@ -26,10 +26,10 @@ stair_detector:
   max_stair_curvature: 0.55   # Unit: Radians # Change this to change maximum staircase curvature for curved staircases
 
   angle_resolution: 1.0       # Unit: Degrees (For front-view projection)
-  robot_height: 1.0190085           # Unit: Meters (Used to segment ground height)
+  robot_height: 1.47           # Unit: Meters (Used to segment ground height)
   initialization_range: 0.5   # Unit: Meters (Range from the ground to search for the initial two steps)
   ground_height_buffer: 0.05  # Unit: Meters (Buffer from robot height where ground lines are classified)
-  use_ramp_detection: true    # Eliminates false positives by ensuring lines on ramps are considered, making this false will potentially lead to increased detections at the expense of false positives
+  use_ramp_detection: false    # Eliminates false positives by ensuring lines on ramps are considered, making this false will potentially lead to increased detections at the expense of false positives
 
 # Line Extractor Params
 stair_line_extractor:
