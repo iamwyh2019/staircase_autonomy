@@ -329,6 +329,7 @@ bool StairDetector::searchForAscendingStairs(){
     if(verbose_) {
         std::cout << "\n\033[1;36m=== ASCENDING STAIR DETECTION START ===\033[0m" << std::endl;
         std::cout << "\033[1;36m[Ascending] Total line slices above ground: " << detected_lines_above_.size() << "\033[0m" << std::endl;
+        std::cout << "\033[1;36m[Ascending] Robot height (camera/sensor): " << robot_height_ << "m, Ground z: " << -robot_height_ << "m\033[0m" << std::endl;
 
         // Count total lines in all slices and show distribution
         int total_lines = 0;
@@ -345,10 +346,13 @@ bool StairDetector::searchForAscendingStairs(){
                 // Show details of each line in initialization range
                 if(ind <= stair_initialization_range_) {
                     for(const auto& line : *detected_lines_above_[ind]) {
+                        float height_above_ground = line.line_center[2] - (-robot_height_);
+                        float distance_forward = sqrt(line.line_center[0]*line.line_center[0] + line.line_center[1]*line.line_center[1]);
                         std::cout << "\033[0;36m    Line: center=[" << line.line_center[0] << ", "
                                   << line.line_center[1] << ", " << line.line_center[2]
                                   << "], length=" << line.line_length
-                                  << ", yaw=" << line.line_yaw_angle << "\033[0m" << std::endl;
+                                  << ", yaw=" << line.line_yaw_angle
+                                  << " | " << distance_forward << "m ahead, " << height_above_ground << "m above ground\033[0m" << std::endl;
                     }
                 }
             }
@@ -368,8 +372,13 @@ bool StairDetector::searchForAscendingStairs(){
         }
         if(first_line_slice >= 0) {
             float first_line_height = first_line_slice * leaf_size_;
+            const auto& first_line = detected_lines_above_[first_line_slice]->front();
+            float actual_height_above_ground = first_line.line_center[2] - (-robot_height_);
+            float distance_forward = sqrt(first_line.line_center[0]*first_line.line_center[0] + first_line.line_center[1]*first_line.line_center[1]);
             std::cout << "\033[1;33m[Ascending] ⚠ First line found at slice " << first_line_slice
-                      << " (~" << first_line_height << "m above ground)\033[0m" << std::endl;
+                      << " (~" << first_line_height << "m above ground plane)\033[0m" << std::endl;
+            std::cout << "\033[1;33m[Ascending] First step is " << distance_forward << "m in front of you and "
+                      << actual_height_above_ground << "m above the ground\033[0m" << std::endl;
             if(first_line_slice > stair_initialization_range_) {
                 std::cout << "\033[1;31m[Ascending] ⚠⚠ PROBLEM: First line is BEYOND initialization range! "
                           << "Need to increase initialization_range parameter or check point cloud alignment.\033[0m" << std::endl;
@@ -383,6 +392,7 @@ bool StairDetector::searchForAscendingStairs(){
     stair_utility::DetectedLine line1, line2, ramp_l;
     int line2_index, line1_index;
     int might_be_slope;
+    int max_stairs_found = 0, max_ramps_found = 0;  // Track max across all iterations
     //Group Lines that are close together
     //Main search space.
     while(!stair_detected_ && !is_init_space_empty){
@@ -495,7 +505,7 @@ if(verbose_)                                     std::cout << "\033[1;32m[Ascend
                                         if(use_ramp_detection_){
                                             ramp_lines_up_.push_back(line2);
                                             might_be_slope++;
-                                            //std::cout << (" [Stair Detector] Ramp Line: " << might_be_slope << " " << ramp_up.size());
+if(verbose_)                                             std::cout << "\033[0;35m[Ascending Ramp] Ramp line detected during initialization (invalid dist): ramp_count=" << ramp_lines_up_.size() << "\033[0m" << std::endl;
                                             break;
                                         }
                                     }
@@ -505,15 +515,15 @@ if(verbose_)                                     std::cout << "\033[1;32m[Ascend
                             if(use_ramp_detection_){
                                 if(z_diff > 0.025 && z_diff <= 0.3){
                                     if(line_diff < 0.15 && center_diff < 0.15 && angle_diff < 0.4 && fabs(line_diff - center_diff) <= 0.1){
-                                        //Check for a ramp     
+                                        //Check for a ramp
                                         might_be_slope++;
                                         ramp_lines_up_.push_back(line2);
-                                        //std::cout << ("Might be ramp Line: " << might_be_slope  << " " << ramp_up.size());
+if(verbose_)                                         std::cout << "\033[0;35m[Ascending Ramp] Ramp line detected during initialization (geometry check): z_diff=" << z_diff << ", ramp_count=" << ramp_lines_up_.size() << "\033[0m" << std::endl;
                                     }
                                     if(valid_dist && angle_diff < 0.40){
                                         might_be_slope++;
                                         ramp_lines_up_.push_back(line2);
-                                        //std::cout << ("Might be ramp Line: " << might_be_slope  << " " << ramp_up.size());
+if(verbose_)                                         std::cout << "\033[0;35m[Ascending Ramp] Ramp line detected during initialization (valid dist, small angle): angle_diff=" << angle_diff << ", ramp_count=" << ramp_lines_up_.size() << "\033[0m" << std::endl;
                                     }
                                 }
                             }
@@ -574,7 +584,7 @@ if(verbose_)                                         std::cout << "\033[1;32m[As
                                         if(use_ramp_detection_){
                                             ramp_lines_up_.push_back(line2);
                                             might_be_slope++;
-                                            // std::cout << "[Stair Detector] Ramp Line: " << might_be_slope << " " << ramp_lines_up_.size() << std::endl;
+if(verbose_)                                             std::cout << "\033[0;35m[Ascending Ramp] Ramp line detected during extension (valid_dist_ramp=true): ramp_count=" << ramp_lines_up_.size() << "\033[0m" << std::endl;
                                             break;
                                         }
                                     }
@@ -605,15 +615,15 @@ if(verbose_)                                         std::cout << "\033[1;32m[As
                             else{
                                 if(use_ramp_detection_){
                                     if(line_diff < 0.15 && center_diff < 0.15 && angle_diff < 0.4 && fabs(line_diff - center_diff) <= 0.1 && z_diff <= 0.3){
-                                        might_be_slope++; 
+                                        might_be_slope++;
                                         ramp_lines_up_.push_back(line2);
-                                        // std::cout << "[Stair Detector] Might be ramp Line: " << might_be_slope  << " " << ramp_lines_up_.size() << std::endl;
+if(verbose_)                                         std::cout << "\033[0;35m[Ascending Ramp] Ramp line detected during extension (geometry check): z_diff=" << z_diff << ", ramp_count=" << ramp_lines_up_.size() << "\033[0m" << std::endl;
                                     }
 
                                     if(valid_dist && angle_diff < 0.40 && z_diff < 0.11){
                                         might_be_slope++;
                                         ramp_lines_up_.push_back(line2);
-                                        // std::cout << "[Stair Detector] Might be ramp Line: " << might_be_slope  << " " << ramp_lines_up_.size() << std::endl;
+if(verbose_)                                         std::cout << "\033[0;35m[Ascending Ramp] Ramp line detected during extension (valid dist, small z_diff): z_diff=" << z_diff << ", ramp_count=" << ramp_lines_up_.size() << "\033[0m" << std::endl;
                                     }
                                 }
                             }  
@@ -621,16 +631,15 @@ if(verbose_)                                         std::cout << "\033[1;32m[As
                 }
             }
 if(verbose_)             std::cout << "\033[1;36m[Ascending] Current step count: " << stairs_up_.size() << " (min required: " << min_stair_count_ << ")\033[0m" << std::endl;
+            // Track maximum stairs and ramps found across all iterations
+            if(stairs_up_.size() > max_stairs_found) max_stairs_found = stairs_up_.size();
+            if(ramp_lines_up_.size() > max_ramps_found) max_ramps_found = ramp_lines_up_.size();
             if(stairs_up_.size() >= min_stair_count_){
-                if(ramp_lines_up_.size() < ceil((int)stairs_up_.size())){
-                    stair_detected_ = true;
-if(verbose_)                     std::cout << "\033[1;32m[Ascending] ✓✓✓ STAIRCASE ACCEPTED with " << stairs_up_.size() << " steps!\033[0m" << std::endl;
-                    break;
-                }
-                else{
-                    std::cout << "\033[1;33m[Ascending] ✗ Staircase REJECTED due to probable ramp: " << ramp_lines_up_.size() << "/" << stairs_up_.size() << " ramp lines\033[0m"<< std::endl;
-                    break;
-                }
+if(verbose_)                 std::cout << "\033[0;35m[Ascending Ramp] Final check: ramp_lines=" << ramp_lines_up_.size() << ", stairs=" << stairs_up_.size() << "\033[0m" << std::endl;
+                // Accept the valid stairs - ramp lines are already filtered out and not in stairs_up_
+                stair_detected_ = true;
+if(verbose_)                 std::cout << "\033[1;32m[Ascending] ✓✓✓ STAIRCASE ACCEPTED with " << stairs_up_.size() << " steps (ramp lines filtered out)\033[0m" << std::endl;
+                break;
             }
             else {
 if(verbose_)                 std::cout << "\033[0;33m[Ascending] Insufficient steps (" << stairs_up_.size() << " < " << min_stair_count_ << "), continuing search...\033[0m" << std::endl;
@@ -652,10 +661,23 @@ if(verbose_)                 std::cout << "\033[0;33m[Ascending] Insufficient st
     }
     if(stair_detected_){
         std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Up with " << stairs_up_.size() << " steps! \033[0m" << std::endl;
+        // Print first step location
+        if(stairs_up_.size() > 0) {
+            const auto& first_step = stairs_up_[0];
+            float distance_forward = sqrt(first_step.line_center[0]*first_step.line_center[0] +
+                                         first_step.line_center[1]*first_step.line_center[1]);
+            float height_above_ground = first_step.line_center[2] - (-robot_height_);
+            std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
+                      << height_above_ground << "m above the ground\033[0m" << std::endl;
+        }
         return true;
     }
 
     if(verbose_) std::cout << "\033[0;31m[Ascending] NO STAIRCASE DETECTED\033[0m" << std::endl;
+    // Check if ramp detection prevented staircase detection
+    if(use_ramp_detection_ && max_ramps_found > 0 && max_stairs_found > 0 && max_stairs_found < min_stair_count_){
+        std::cout << "\033[1;33m[Ascending] Potential staircase prevented by ramp detection: " << max_stairs_found << " stairs, " << max_ramps_found << " ramp lines detected\033[0m" << std::endl;
+    }
     return false;
 }
 
@@ -679,6 +701,7 @@ bool StairDetector::searchForDescendingStairs(){
     stair_utility::DetectedLine line1, line2, ramp_l;
     int line2_index, line1_index;
     int might_be_slope;
+    int max_stairs_found = 0, max_ramps_found = 0;  // Track max across all iterations
     while(!stair_detected_ && !is_init_space_empty){
         stairs_down_.clear();
         ramp_lines_down_.clear();
@@ -841,7 +864,7 @@ if(verbose_)         std::cout << "\033[0;35m[Descending] Searching for initial 
                                         if(use_ramp_detection_){
                                             ramp_lines_down_.push_back(line2);
                                             might_be_slope++;
-                                            //std::cout << "[Stair Detector] Ramp Line: " << might_be_slope << " " << ramp_lines_down_.size() << std::endl;
+if(verbose_)                                             std::cout << "\033[0;35m[Descending Ramp] Ramp line detected during extension (valid_dist_ramp=true): ramp_count=" << ramp_lines_down_.size() << "\033[0m" << std::endl;
                                             break;
                                         }
                                     }
@@ -875,13 +898,13 @@ if(verbose_)         std::cout << "\033[0;35m[Descending] Searching for initial 
                                     if(line_diff < 0.15 && center_diff < 0.15 && angle_diff < 0.4 && fabs(line_diff - center_diff) <= 0.1 && z_diff <= 0.3){
                                         might_be_slope++;
                                         ramp_lines_down_.push_back(line2);
-                                        //std::cout << "[Stair Detector] Ramp Line: " << might_be_slope << " " << ramp_lines_down_.size() << std::endl;
+if(verbose_)                                         std::cout << "\033[0;35m[Descending Ramp] Ramp line detected during extension (geometry check): z_diff=" << z_diff << ", ramp_count=" << ramp_lines_down_.size() << "\033[0m" << std::endl;
                                     }
 
                                     if(valid_dist && angle_diff && angle_diff < 0.40 && z_diff < 0.11){
                                         might_be_slope++;
                                         ramp_lines_down_.push_back(line2);
-                                        //std::cout << "[Stair Detector] Ramp Line: " << might_be_slope << " " << ramp_lines_down_.size() << std::endl;
+if(verbose_)                                         std::cout << "\033[0;35m[Descending Ramp] Ramp line detected during extension (valid dist, small z_diff): z_diff=" << z_diff << ", ramp_count=" << ramp_lines_down_.size() << "\033[0m" << std::endl;
                                     }
                                 }
                             }
@@ -889,16 +912,15 @@ if(verbose_)         std::cout << "\033[0;35m[Descending] Searching for initial 
                 }
             }
 if(verbose_)             std::cout << "\033[1;35m[Descending] Current step count: " << stairs_down_.size() << " (min required: " << min_stair_count_ << ")\033[0m" << std::endl;
+            // Track maximum stairs and ramps found across all iterations
+            if(stairs_down_.size() > max_stairs_found) max_stairs_found = stairs_down_.size();
+            if(ramp_lines_down_.size() > max_ramps_found) max_ramps_found = ramp_lines_down_.size();
             if(stairs_down_.size() >= min_stair_count_){
-                if(ramp_lines_down_.size() < ceil((int)stairs_down_.size())){
-                    stair_detected_ = true;
-if(verbose_)                     std::cout << "\033[1;32m[Descending] ✓✓✓ STAIRCASE ACCEPTED with " << stairs_down_.size() << " steps!\033[0m" << std::endl;
-                    break;
-                }
-                else{
-                    std::cout << "\033[1;33m[Descending] ✗ Staircase REJECTED due to probable ramp: " << ramp_lines_down_.size() << "/" << stairs_down_.size() << " ramp lines\033[0m" << std::endl;
-                    break;
-                }
+if(verbose_)                 std::cout << "\033[0;35m[Descending Ramp] Final check: ramp_lines=" << ramp_lines_down_.size() << ", stairs=" << stairs_down_.size() << "\033[0m" << std::endl;
+                // Accept the valid stairs - ramp lines are already filtered out and not in stairs_down_
+                stair_detected_ = true;
+if(verbose_)                 std::cout << "\033[1;32m[Descending] ✓✓✓ STAIRCASE ACCEPTED with " << stairs_down_.size() << " steps (ramp lines filtered out)\033[0m" << std::endl;
+                break;
             }
             else {
 if(verbose_)                 std::cout << "\033[0;33m[Descending] Insufficient steps (" << stairs_down_.size() << " < " << min_stair_count_ << "), continuing search...\033[0m" << std::endl;
@@ -919,10 +941,23 @@ if(verbose_)                 std::cout << "\033[0;33m[Descending] Insufficient s
     }
      if(stair_detected_){
         std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Down " << stairs_down_.size() << " steps! \033[0m" << std::endl;
+        // Print first step location
+        if(stairs_down_.size() > 0) {
+            const auto& first_step = stairs_down_[0];
+            float distance_forward = sqrt(first_step.line_center[0]*first_step.line_center[0] +
+                                         first_step.line_center[1]*first_step.line_center[1]);
+            float height_below_ground = (-robot_height_) - first_step.line_center[2];
+            std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
+                      << height_below_ground << "m below the ground\033[0m" << std::endl;
+        }
         return true;
     }
 
     if(verbose_) std::cout << "\033[0;31m[Descending] NO STAIRCASE DETECTED\033[0m" << std::endl;
+    // Check if ramp detection prevented staircase detection
+    if(use_ramp_detection_ && max_ramps_found > 0 && max_stairs_found > 0 && max_stairs_found < min_stair_count_){
+        std::cout << "\033[1;33m[Descending] Potential staircase prevented by ramp detection: " << max_stairs_found << " stairs, " << max_ramps_found << " ramp lines detected\033[0m" << std::endl;
+    }
     return false;
 }
 

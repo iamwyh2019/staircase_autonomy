@@ -315,44 +315,95 @@ int main(int argc, char** argv) {
         auto lines_ground = detector.getDetectedLinesGround();
         auto lines_below = detector.getDetectedLinesBelow();
 
-        // Convert detector lines to Line objects for visualization
-        for (const auto& slice : lines_above) {
-            for (const auto& detected_line : *slice) {
-                Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
-                         detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
-                all_detector_lines.push_back(line);
+        if (verbose)
+        {
+            // Convert detector lines to Line objects for visualization
+            std::cout << "\n=== LINES ABOVE GROUND ===" << std::endl;
+            int line_index = 1;
+            for (const auto& slice : lines_above) {
+                for (const auto& detected_line : *slice) {
+                    Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
+                            detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
+                    all_detector_lines.push_back(line);
+
+                    // Calculate height above ground and distance forward
+                    float height_above_ground = detected_line.line_center[2] - (-detector_params.robot_height);
+                    float distance_forward = sqrt(detected_line.line_center[0]*detected_line.line_center[0] +
+                                                detected_line.line_center[1]*detected_line.line_center[1]);
+
+                    // Determine color based on line index
+                    const char* colors[] = {"Red", "Green", "Blue", "Yellow", "Magenta", "Cyan"};
+                    const char* color = colors[(line_index - 1) % 6];
+
+                    std::cout << "Line #" << line_index << " (" << color << "): "
+                            << "height=" << height_above_ground << "m, "
+                            << "distance=" << distance_forward << "m, "
+                            << "length=" << detected_line.line_length << "m, "
+                            << "center=[" << detected_line.line_center[0] << ", "
+                            << detected_line.line_center[1] << ", "
+                            << detected_line.line_center[2] << "]" << std::endl;
+                    line_index++;
+                }
             }
+
+            std::cout << "\n=== LINES AT GROUND ===" << std::endl;
+            for (const auto& slice : lines_ground) {
+                for (const auto& detected_line : *slice) {
+                    Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
+                            detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
+                    all_detector_lines.push_back(line);
+
+                    float height_above_ground = detected_line.line_center[2] - (-detector_params.robot_height);
+                    float distance_forward = sqrt(detected_line.line_center[0]*detected_line.line_center[0] +
+                                                detected_line.line_center[1]*detected_line.line_center[1]);
+
+                    const char* colors[] = {"Red", "Green", "Blue", "Yellow", "Magenta", "Cyan"};
+                    const char* color = colors[(line_index - 1) % 6];
+
+                    std::cout << "Line #" << line_index << " (" << color << "): "
+                            << "height=" << height_above_ground << "m, "
+                            << "distance=" << distance_forward << "m, "
+                            << "length=" << detected_line.line_length << "m" << std::endl;
+                    line_index++;
+                }
+            }
+
+            std::cout << "\n=== LINES BELOW GROUND ===" << std::endl;
+            for (const auto& slice : lines_below) {
+                for (const auto& detected_line : *slice) {
+                    Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
+                            detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
+                    all_detector_lines.push_back(line);
+
+                    float height_below_ground = (-detector_params.robot_height) - detected_line.line_center[2];
+                    float distance_forward = sqrt(detected_line.line_center[0]*detected_line.line_center[0] +
+                                                detected_line.line_center[1]*detected_line.line_center[1]);
+
+                    const char* colors[] = {"Red", "Green", "Blue", "Yellow", "Magenta", "Cyan"};
+                    const char* color = colors[(line_index - 1) % 6];
+
+                    std::cout << "Line #" << line_index << " (" << color << "): "
+                            << "depth=" << height_below_ground << "m below ground, "
+                            << "distance=" << distance_forward << "m, "
+                            << "length=" << detected_line.line_length << "m" << std::endl;
+                    line_index++;
+                }
+            }
+
+            // Count lines by length for debugging
+            int short_lines = 0, long_lines = 0;
+            for (const auto& line : all_detector_lines) {
+                if (line.length() < line_params.min_line_length) {
+                    short_lines++;
+                } else {
+                    long_lines++;
+                }
+            }
+            std::cout << "Lines shorter than " << line_params.min_line_length << "m: " << short_lines << std::endl;
+            std::cout << "Lines longer than " << line_params.min_line_length << "m: " << long_lines << std::endl;
         }
 
-        for (const auto& slice : lines_ground) {
-            for (const auto& detected_line : *slice) {
-                Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
-                         detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
-                all_detector_lines.push_back(line);
-            }
-        }
-
-        for (const auto& slice : lines_below) {
-            for (const auto& detected_line : *slice) {
-                Line line(detected_line.line_theta, detected_line.line_radius, detected_line.line_covariance,
-                         detected_line.line_start, detected_line.line_end, std::vector<unsigned int>());
-                all_detector_lines.push_back(line);
-            }
-        }
-
-        std::cout << "Actual lines detected by detector: " << all_detector_lines.size() << "\n";
-
-        // Count lines by length for debugging
-        int short_lines = 0, long_lines = 0;
-        for (const auto& line : all_detector_lines) {
-            if (line.length() < line_params.min_line_length) {
-                short_lines++;
-            } else {
-                long_lines++;
-            }
-        }
-        std::cout << "Lines shorter than " << line_params.min_line_length << "m: " << short_lines << std::endl;
-        std::cout << "Lines longer than " << line_params.min_line_length << "m: " << long_lines << std::endl;
+        std::cout << "\nActual lines detected by detector: " << all_detector_lines.size() << "\n";
 
         // Save line visualization of actual detector lines
         if (all_detector_lines.size() > 0) {
