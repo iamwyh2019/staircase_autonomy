@@ -25,8 +25,8 @@ def save_ply(points, colors, filename):
         colors: Nx3 array of (r, g, b) colors [0-255]
         filename: output PLY filename
     """
-    # Remove invalid points (where z=0 or any coordinate is inf/nan)
-    valid_mask = (points[:, 2] != 0) & np.isfinite(points).all(axis=1) & np.isfinite(colors).all(axis=1)
+    # Remove invalid points (inf/nan coordinates or colors)
+    valid_mask = np.isfinite(points).all(axis=1) & np.isfinite(colors).all(axis=1)
     points = points[valid_mask]
     colors = colors[valid_mask]
 
@@ -76,6 +76,101 @@ def transform_coordinates(points):
     transformed[:, 2] = -points[:, 1]  # Z_new = -Y_rs (up)
 
     return transformed
+
+
+def estimate_camera_height(points):
+    """
+    Estimate camera height above ground using point cloud data
+
+    Args:
+        points: Nx3 array of 3D points in target coordinate system (X=forward, Y=left, Z=up)
+
+    Returns:
+        float: Estimated height in meters (None if estimation fails)
+    """
+    if len(points) < 100:
+        return None
+
+    # Method: Use percentile of Z values (up axis)
+    # The ground should be represented by the lowest Z values
+    z_values = points[:, 2]
+    valid_z = z_values[np.isfinite(z_values)]
+
+    if len(valid_z) < 50:
+        return None
+
+    # Use 5th percentile as ground level estimate (robust against noise)
+    ground_level = np.percentile(valid_z, 5)
+
+    # Camera height = distance from camera (origin) to ground level
+    # Since points are in camera coordinate system, camera is at (0,0,0)
+    # Ground level is at Z = ground_level (negative if below camera)
+    camera_height = -ground_level  # Negative because ground is below camera
+
+    return max(0, camera_height)  # Ensure positive height
+
+
+def estimate_camera_height_robust(points):
+    """
+    More robust height estimation using plane fitting
+
+    Args:
+        points: Nx3 array of 3D points in target coordinate system
+
+    Returns:
+        tuple: (height, confidence) where confidence is 0-1
+    """
+    if len(points) < 200:
+        return None, 0.0
+
+    try:
+        # Sample points for plane fitting (use bottom 30% of Z values)
+        z_values = points[:, 2]
+        valid_mask = np.isfinite(z_values)
+        valid_points = points[valid_mask]
+
+        if len(valid_points) < 100:
+            return None, 0.0
+
+        # Sort by Z and take lowest 30% as ground candidates
+        sorted_indices = np.argsort(valid_points[:, 2])
+        ground_candidates = valid_points[sorted_indices[:len(sorted_indices)//3]]
+
+        # Remove outliers using IQR
+        z_ground = ground_candidates[:, 2]
+        q25, q75 = np.percentile(z_ground, [25, 75])
+        iqr = q75 - q25
+        outlier_mask = (z_ground >= q25 - 1.5*iqr) & (z_ground <= q75 + 1.5*iqr)
+
+        clean_ground_points = ground_candidates[outlier_mask]
+
+        if len(clean_ground_points) < 50:
+            return None, 0.0
+
+        # Fit plane using least squares: z = ax + by + d
+        A = np.c_[clean_ground_points[:, 0], clean_ground_points[:, 1], np.ones(len(clean_ground_points))]
+        B = clean_ground_points[:, 2]
+
+        # Solve normal equations
+        coeffs = np.linalg.lstsq(A, B, rcond=None)[0]
+        a, b, d = coeffs
+
+        # Distance from origin (camera at 0,0,0) to plane z = ax + by + d
+        # At camera position (0,0): ground_z = a*0 + b*0 + d = d
+        camera_height = -d  # Negative because ground is below camera
+
+        # Calculate confidence based on how well points fit the plane
+        predicted_z = clean_ground_points[:, 0] * a + clean_ground_points[:, 1] * b + d
+        residuals = clean_ground_points[:, 2] - predicted_z
+        rmse = np.sqrt(np.mean(residuals**2))
+
+        # Confidence decreases with RMSE (good fit = high confidence)
+        confidence = max(0, min(1, 1 - rmse/0.1))  # 10cm RMSE = 0 confidence
+
+        return max(0, camera_height), confidence
+
+    except:
+        return None, 0.0
 
 
 def setup_camera(visual_preset=4, width=424, height=240):
@@ -181,6 +276,15 @@ def capture_point_cloud(pipeline, align, depth_intrinsics, orientation_tracker=N
         R = orientation_tracker.get_rotation_matrix()
         points = points @ R.T
         print("Applied gravity alignment")
+
+    # Estimate camera height
+    height_simple = estimate_camera_height(points)
+    height_robust, confidence = estimate_camera_height_robust(points)
+
+    if height_robust is not None:
+        print(f"Camera height: {height_robust:.2f}m (confidence: {confidence:.2f})")
+    elif height_simple is not None:
+        print(f"Camera height: {height_simple:.2f}m (simple estimate)")
 
     # Get corresponding RGB colors
     colors = color_image[v, u]  # BGR format
