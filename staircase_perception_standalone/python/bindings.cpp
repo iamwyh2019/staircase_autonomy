@@ -79,6 +79,43 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr numpy_to_pointcloud(
     return cloud;
 }
 
+// Helper function to apply voxel grid filtering
+py::dict voxel_grid_filter(py::array_t<float> xyz, py::array_t<float> intensity, float leaf_size) {
+    // Convert to PCL cloud
+    auto cloud = numpy_to_pointcloud(xyz, intensity);
+
+    // Apply voxel grid filter
+    pcl::VoxelGrid<pcl::PointXYZI> voxel_filter;
+    voxel_filter.setInputCloud(cloud);
+    voxel_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
+
+    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    voxel_filter.filter(*filtered_cloud);
+
+    size_t n_points = filtered_cloud->points.size();
+
+    // Convert back to numpy arrays
+    py::array_t<float> filtered_xyz(std::vector<size_t>{n_points, 3});
+    py::array_t<float> filtered_intensity(std::vector<size_t>{n_points});
+
+    auto xyz_buf = filtered_xyz.mutable_unchecked<2>();
+    auto intensity_buf = filtered_intensity.mutable_unchecked<1>();
+
+    for (size_t i = 0; i < n_points; ++i) {
+        xyz_buf(i, 0) = filtered_cloud->points[i].x;
+        xyz_buf(i, 1) = filtered_cloud->points[i].y;
+        xyz_buf(i, 2) = filtered_cloud->points[i].z;
+        intensity_buf(i) = filtered_cloud->points[i].intensity;
+    }
+
+    py::dict result;
+    result["xyz"] = filtered_xyz;
+    result["intensity"] = filtered_intensity;
+    result["size"] = n_points;
+
+    return result;
+}
+
 // Wrapper class for StairDetector that works with numpy
 class StairDetectorWrapper {
 public:
@@ -191,4 +228,6 @@ PYBIND11_MODULE(stair_detector_py, m) {
 
     // Utility functions
     m.def("load_pcd_file", &load_pcd_file, "Load a PCD file and return as numpy arrays");
+    m.def("voxel_grid_filter", &voxel_grid_filter, "Apply voxel grid filtering to point cloud",
+          py::arg("xyz"), py::arg("intensity"), py::arg("leaf_size"));
 }

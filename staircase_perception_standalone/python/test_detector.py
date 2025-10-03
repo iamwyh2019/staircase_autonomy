@@ -132,13 +132,12 @@ def main():
         print(f"Usage: {sys.argv[0]} [PCD_FILE] [-v|--verbose] [-c|--config CONFIG_FILE]")
         return 1
 
-    # Apply voxel filtering using numpy
+    # Apply voxel filtering
     print(f"Applying voxel grid filter (leaf size: {detector_params.leaf_size}m)...")
-    # Simple downsampling - for production use, you'd want proper voxel grid filtering
-    # For now, just pass through to match the C++ test
-    filtered_xyz = xyz
-    filtered_intensity = intensity
-    print(f"After filtering: {len(filtered_xyz)} points")
+    filtered_data = sd.voxel_grid_filter(xyz, intensity, detector_params.leaf_size)
+    filtered_xyz = filtered_data['xyz']
+    filtered_intensity = filtered_data['intensity']
+    print(f"After voxel filtering: {filtered_data['size']} points")
 
     # Set point cloud
     detector.set_point_cloud(filtered_xyz, filtered_intensity)
