@@ -276,14 +276,50 @@ int main(int argc, char** argv) {
             break;
         case stair_utility::StaircaseDetectorResult::StairsDetectedUp:
             std::cout << "Staircase detected going UP only.\n";
+            std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Up with " << stair_up.stair_count << " steps! \033[0m" << std::endl;
+            if(stair_up.steps.size() > 0) {
+                const auto& first_step = stair_up.steps[0];
+                float distance_forward = sqrt(first_step.start_p(0)*first_step.start_p(0) +
+                                             first_step.start_p(1)*first_step.start_p(1));
+                float height_above_ground = first_step.start_p(2) - (-detector_params.robot_height);
+                std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
+                          << height_above_ground << "m above the ground\033[0m" << std::endl;
+            }
             printStaircaseResults(stair_up, "ASCENDING");
             break;
         case stair_utility::StaircaseDetectorResult::StairsDetectedDown:
             std::cout << "Staircase detected going DOWN only.\n";
+            std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Down " << stair_down.stair_count << " steps! \033[0m" << std::endl;
+            if(stair_down.steps.size() > 0) {
+                const auto& first_step = stair_down.steps[0];
+                float distance_forward = sqrt(first_step.start_p(0)*first_step.start_p(0) +
+                                             first_step.start_p(1)*first_step.start_p(1));
+                float height_below_ground = (-detector_params.robot_height) - first_step.start_p(2);
+                std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
+                          << height_below_ground << "m below the ground\033[0m" << std::endl;
+            }
             printStaircaseResults(stair_down, "DESCENDING");
             break;
         case stair_utility::StaircaseDetectorResult::StairsDetectedBoth:
             std::cout << "Staircases detected in BOTH directions.\n";
+            std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Up with " << stair_up.stair_count << " steps! \033[0m" << std::endl;
+            if(stair_up.steps.size() > 0) {
+                const auto& first_step = stair_up.steps[0];
+                float distance_forward = sqrt(first_step.start_p(0)*first_step.start_p(0) +
+                                             first_step.start_p(1)*first_step.start_p(1));
+                float height_above_ground = first_step.start_p(2) - (-detector_params.robot_height);
+                std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
+                          << height_above_ground << "m above the ground\033[0m" << std::endl;
+            }
+            std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Down " << stair_down.stair_count << " steps! \033[0m" << std::endl;
+            if(stair_down.steps.size() > 0) {
+                const auto& first_step = stair_down.steps[0];
+                float distance_forward = sqrt(first_step.start_p(0)*first_step.start_p(0) +
+                                             first_step.start_p(1)*first_step.start_p(1));
+                float height_below_ground = (-detector_params.robot_height) - first_step.start_p(2);
+                std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
+                          << height_below_ground << "m below the ground\033[0m" << std::endl;
+            }
             printStaircaseResults(stair_up, "ASCENDING");
             printStaircaseResults(stair_down, "DESCENDING");
             break;

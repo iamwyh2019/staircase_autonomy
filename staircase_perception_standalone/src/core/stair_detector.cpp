@@ -47,10 +47,6 @@ StairDetector::StairDetector(stair_utility::StaircaseDetectorParams detector_par
     cloud_length_ = (x_max_ - x_min_)/leaf_size_;
     cloud_width_ = (y_max_ - y_min_)/leaf_size_;
 
-    std::cout << "\033[1;32m[Staircase Detector]Segmentation Parameters: \033[0m" << std::endl;
-    std::cout << "\033[1;32mTop Down Projection -- Length: " << cloud_length_ <<", Width: " << cloud_width_ << "\033[0m" << std::endl;
-    std::cout << "\033[1;32mCylindrical Projection -- Width: "<< cloud_ang_width_ <<", Height:" << cloud_z_height_ << "\033[0m" << std::endl;
-
     lasercloud_projected_->width = cloud_width_;
     lasercloud_projected_->height = cloud_length_;
     lasercloud_projected_->is_dense = false;
@@ -108,8 +104,6 @@ StairDetector::StairDetector(stair_utility::StaircaseDetectorParams detector_par
     stair_initialization_range_ = round(initialization_distance_ / leaf_size_);
     ground_line_padding_size_ = round(ground_height_buffer_ / leaf_size_);
 
-    std::cout << "\033[1;32mRobot height: " << robot_height_ << " Ground Index: " << ground_index_ << "\033[0m" << std::endl;
-    std::cout << "\033[1;32mInitialization Range index: " << stair_initialization_range_<< " Ground Padding range: " << ground_line_padding_size_ << "\033[0m" << std::endl;
     detected_lines_below_.reserve(ground_index_ - ground_line_padding_size_ + 1);
     detected_lines_ground_.reserve(2 * ground_line_padding_size_ + 1);
     detected_lines_above_.reserve(cloud_z_height_ - ground_index_ - ground_line_padding_size_);
@@ -137,7 +131,6 @@ void StairDetector::setPointCloudAndOdometry(const pcl::PointCloud<pcl::PointXYZ
 
     robot_height_ = r_height;
     ground_index_ = round((- robot_height_ - z_min_) * cloud_z_height_ /(z_max_ - z_min_));
-    std::cout << "\033[1;32mRobot height: " << robot_height_ << " Ground Index: " << ground_index_ << "\033[0m" << std::endl;
 }
 
 stair_utility::StaircaseDetectorResult StairDetector::detectStaircase(stair_utility::StaircaseMeasurement& stair_up, stair_utility::StaircaseMeasurement& stair_down){
@@ -319,9 +312,7 @@ void StairDetector::getLinesFromCloud(){
             linecount = linecount + detected_lines_above_[i - ground_index_ - ground_line_padding_size_ - 1]->size();
         }
     }
-    if(check1 == 0)
-        std::cout << "\033[0;33m[Stair Detector]processed cloud is empty: error! \033[0m" << std::endl;
-    
+
 }
 
 bool StairDetector::searchForAscendingStairs(){
@@ -660,24 +651,10 @@ if(verbose_)                 std::cout << "\033[0;33m[Ascending] Insufficient st
         }
     }
     if(stair_detected_){
-        std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Up with " << stairs_up_.size() << " steps! \033[0m" << std::endl;
-        // Print first step location
-        if(stairs_up_.size() > 0) {
-            const auto& first_step = stairs_up_[0];
-            float distance_forward = sqrt(first_step.line_center[0]*first_step.line_center[0] +
-                                         first_step.line_center[1]*first_step.line_center[1]);
-            float height_above_ground = first_step.line_center[2] - (-robot_height_);
-            std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
-                      << height_above_ground << "m above the ground\033[0m" << std::endl;
-        }
         return true;
     }
 
     if(verbose_) std::cout << "\033[0;31m[Ascending] NO STAIRCASE DETECTED\033[0m" << std::endl;
-    // Check if ramp detection prevented staircase detection
-    if(use_ramp_detection_ && max_ramps_found > 0 && max_stairs_found > 0 && max_stairs_found < min_stair_count_){
-        std::cout << "\033[1;33m[Ascending] Potential staircase prevented by ramp detection: " << max_stairs_found << " stairs, " << max_ramps_found << " ramp lines detected\033[0m" << std::endl;
-    }
     return false;
 }
 
@@ -940,24 +917,10 @@ if(verbose_)                 std::cout << "\033[0;33m[Descending] Insufficient s
         }
     }
      if(stair_detected_){
-        std::cout << "\033[1;32m[Stair Detector] Staircase Detected Going Down " << stairs_down_.size() << " steps! \033[0m" << std::endl;
-        // Print first step location
-        if(stairs_down_.size() > 0) {
-            const auto& first_step = stairs_down_[0];
-            float distance_forward = sqrt(first_step.line_center[0]*first_step.line_center[0] +
-                                         first_step.line_center[1]*first_step.line_center[1]);
-            float height_below_ground = (-robot_height_) - first_step.line_center[2];
-            std::cout << "\033[1;32m[Stair Detector] First step is " << distance_forward << "m in front of you and "
-                      << height_below_ground << "m below the ground\033[0m" << std::endl;
-        }
         return true;
     }
 
     if(verbose_) std::cout << "\033[0;31m[Descending] NO STAIRCASE DETECTED\033[0m" << std::endl;
-    // Check if ramp detection prevented staircase detection
-    if(use_ramp_detection_ && max_ramps_found > 0 && max_stairs_found > 0 && max_stairs_found < min_stair_count_){
-        std::cout << "\033[1;33m[Descending] Potential staircase prevented by ramp detection: " << max_stairs_found << " stairs, " << max_ramps_found << " ramp lines detected\033[0m" << std::endl;
-    }
     return false;
 }
 

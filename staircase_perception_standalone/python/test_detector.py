@@ -141,12 +141,40 @@ def main():
         print("No staircases detected.")
     elif result == sd.StairsDetectedUp:
         print("Staircase detected going UP only.")
+        print(f"\033[1;32m[Stair Detector] Staircase Detected Going Up with {stair_up.stair_count} steps! \033[0m")
+        if len(stair_up.steps) > 0:
+            first_step = stair_up.steps[0]
+            distance_forward = np.sqrt(first_step.start_p[0]**2 + first_step.start_p[1]**2)
+            height_above_ground = first_step.start_p[2] - (-detector_params.robot_height)
+            print(f"\033[1;32m[Stair Detector] First step is {distance_forward:.2f}m in front of you and "
+                  f"{height_above_ground:.2f}m above the ground\033[0m")
         print_staircase_results(stair_up, "ASCENDING")
     elif result == sd.StairsDetectedDown:
         print("Staircase detected going DOWN only.")
+        print(f"\033[1;32m[Stair Detector] Staircase Detected Going Down {stair_down.stair_count} steps! \033[0m")
+        if len(stair_down.steps) > 0:
+            first_step = stair_down.steps[0]
+            distance_forward = np.sqrt(first_step.start_p[0]**2 + first_step.start_p[1]**2)
+            height_below_ground = (-detector_params.robot_height) - first_step.start_p[2]
+            print(f"\033[1;32m[Stair Detector] First step is {distance_forward:.2f}m in front of you and "
+                  f"{height_below_ground:.2f}m below the ground\033[0m")
         print_staircase_results(stair_down, "DESCENDING")
     elif result == sd.StairsDetectedBoth:
         print("Staircases detected in BOTH directions.")
+        print(f"\033[1;32m[Stair Detector] Staircase Detected Going Up with {stair_up.stair_count} steps! \033[0m")
+        if len(stair_up.steps) > 0:
+            first_step = stair_up.steps[0]
+            distance_forward = np.sqrt(first_step.start_p[0]**2 + first_step.start_p[1]**2)
+            height_above_ground = first_step.start_p[2] - (-detector_params.robot_height)
+            print(f"\033[1;32m[Stair Detector] First step is {distance_forward:.2f}m in front of you and "
+                  f"{height_above_ground:.2f}m above the ground\033[0m")
+        print(f"\033[1;32m[Stair Detector] Staircase Detected Going Down {stair_down.stair_count} steps! \033[0m")
+        if len(stair_down.steps) > 0:
+            first_step = stair_down.steps[0]
+            distance_forward = np.sqrt(first_step.start_p[0]**2 + first_step.start_p[1]**2)
+            height_below_ground = (-detector_params.robot_height) - first_step.start_p[2]
+            print(f"\033[1;32m[Stair Detector] First step is {distance_forward:.2f}m in front of you and "
+                  f"{height_below_ground:.2f}m below the ground\033[0m")
         print_staircase_results(stair_up, "ASCENDING")
         print_staircase_results(stair_down, "DESCENDING")
 
