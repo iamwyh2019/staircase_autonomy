@@ -10,6 +10,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <pcl/filters/voxel_grid.h>
 
 namespace py = pybind11;
 
@@ -144,7 +145,7 @@ private:
     StairDetector detector_;
 };
 
-PYBIND11_MODULE(stair_detector_py, m) {
+PYBIND11_MODULE(stair_detector, m) {
     m.doc() = "Python bindings for staircase detection";
 
     // Enums

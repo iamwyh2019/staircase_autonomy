@@ -82,7 +82,7 @@ if %ERRORLEVEL% neq 0 (
 
 REM Copy the built module to the python directory
 echo Copying module to python directory...
-set "MODULE_NAME=stair_detector_py%PYTHON_SUFFIX%"
+set "MODULE_NAME=stair_detector%PYTHON_SUFFIX%"
 
 REM Look for the module in Release subdirectory (typical for MSVC builds)
 if exist "Release\%MODULE_NAME%" (
@@ -109,6 +109,6 @@ echo Module location: %SCRIPT_DIR%\%MODULE_NAME%
 echo.
 echo To test the module, run:
 echo   cd %SCRIPT_DIR%
-echo   %PYTHON_BIN% -c "import stair_detector_py; print(stair_detector_py.__doc__)"
+echo   %PYTHON_BIN% -c "import stair_detector; print(stair_detector.__doc__)"
 
 endlocal

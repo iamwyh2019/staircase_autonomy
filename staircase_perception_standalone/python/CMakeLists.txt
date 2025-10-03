@@ -105,10 +105,10 @@ target_link_libraries(config_parser
 )
 
 # StairDetector library
-add_library(stair_detector
+add_library(stair_detector_lib
     ${STANDALONE_DIR}/src/core/stair_detector.cpp
 )
-target_link_libraries(stair_detector
+target_link_libraries(stair_detector_lib
     line_extraction
     config_parser
     ${PCL_LIBRARIES}
@@ -116,27 +116,23 @@ target_link_libraries(stair_detector
 )
 
 # Python module
-pybind11_add_module(stair_detector_py bindings.cpp)
+pybind11_add_module(stair_detector bindings.cpp)
 
-target_link_libraries(stair_detector_py PRIVATE
-    stair_detector
+target_link_libraries(stair_detector PRIVATE
+    stair_detector_lib
     config_parser
     ${PCL_LIBRARIES}
     Eigen3::Eigen
 )
 
-# Set output directory and properties
-set_target_properties(stair_detector_py PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-)
+
 
 # Windows-specific linking
 if(WIN32)
     # Ensure proper symbol visibility
-    target_compile_definitions(stair_detector_py PRIVATE PYBIND11_COMPILER_TYPE=\"_MSC_VER\")
+    target_compile_definitions(stair_detector PRIVATE PYBIND11_COMPILER_TYPE="_MSC_VER")
 
     # Try to link statically to reduce DLL dependencies
-    set_property(TARGET stair_detector_py PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    target_compile_definitions(stair_detector_py PRIVATE PCL_STATIC)
+    set_property(TARGET stair_detector PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    target_compile_definitions(stair_detector PRIVATE PCL_STATIC)
 endif()

@@ -112,7 +112,7 @@ void printStaircaseResults(const stair_utility::StaircaseMeasurement& stair_meas
         std::cout << "  Start: (" << step.start_p(0) << ", " << step.start_p(1) << ", " << step.start_p(2) << ")\n";
         std::cout << "  End:   (" << step.end_p(0) << ", " << step.end_p(1) << ", " << step.end_p(2) << ")\n";
         std::cout << "  Width: " << step.step_width << "m\n";
-        std::cout << "  Polar: r=" << step.line_polar_form(0) << ", θ=" << step.line_polar_form(1) << "\n";
+        std::cout << "  Polar: r=" << step.line_polar_form(0) << ", theta=" << step.line_polar_form(1) << "\n";
     }
 }
 

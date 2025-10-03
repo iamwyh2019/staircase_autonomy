@@ -25,7 +25,7 @@ if sys.platform == 'win32' and sys.version_info >= (3, 8):
         print("         The module may fail to import. Please add vcpkg to your system PATH.", file=sys.stderr)
         print("         Example: C:\\vcpkg\\installed\\x64-windows\\bin", file=sys.stderr)
 
-import stair_detector_py as sd
+import stair_detector as sd
 
 def print_staircase_results(stair_measurement, direction):
     """Print detailed staircase detection results"""
