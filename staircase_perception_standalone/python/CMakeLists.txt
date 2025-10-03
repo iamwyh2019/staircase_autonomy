@@ -5,9 +5,15 @@ project(stair_detector_python)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Force x86_64 architecture on macOS
+# Platform-specific configuration
 if(APPLE)
+    # Force x86_64 architecture on macOS
     set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for macOS" FORCE)
+elseif(WIN32)
+    # Windows-specific settings
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+    # Set runtime library to match Python (usually /MD for release)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 endif()
 
 # Find required packages
@@ -119,7 +125,18 @@ target_link_libraries(stair_detector_py PRIVATE
     Eigen3::Eigen
 )
 
-# Set output directory
+# Set output directory and properties
 set_target_properties(stair_detector_py PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+
+# Windows-specific linking
+if(WIN32)
+    # Ensure proper symbol visibility
+    target_compile_definitions(stair_detector_py PRIVATE PYBIND11_COMPILER_TYPE=\"_MSC_VER\")
+
+    # Try to link statically to reduce DLL dependencies
+    set_property(TARGET stair_detector_py PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    target_compile_definitions(stair_detector_py PRIVATE PCL_STATIC)
+endif()

@@ -5,8 +5,26 @@ Tests the StairDetector with PCD files or generates synthetic data
 """
 
 import sys
+import os
 import time
 import numpy as np
+
+# Setup DLL search paths for Windows (Python 3.8+)
+if sys.platform == 'win32' and sys.version_info >= (3, 8):
+    # Search for vcpkg bin directory in PATH
+    path_entries = os.environ.get('PATH', '').split(os.pathsep)
+    vcpkg_bins = [p for p in path_entries if 'vcpkg' in p.lower() and 'bin' in p.lower()]
+
+    if vcpkg_bins:
+        for vcpkg_bin in vcpkg_bins:
+            if os.path.exists(vcpkg_bin):
+                os.add_dll_directory(vcpkg_bin)
+                # print(f"Added DLL directory: {vcpkg_bin}")
+    else:
+        print("WARNING: vcpkg bin directory not found in PATH.", file=sys.stderr)
+        print("         The module may fail to import. Please add vcpkg to your system PATH.", file=sys.stderr)
+        print("         Example: C:\\vcpkg\\installed\\x64-windows\\bin", file=sys.stderr)
+
 import stair_detector_py as sd
 
 def print_staircase_results(stair_measurement, direction):
@@ -57,7 +75,7 @@ def print_staircase_results(stair_measurement, direction):
         print(f"  Start: ({step.start_p[0]:.3f}, {step.start_p[1]:.3f}, {step.start_p[2]:.3f})")
         print(f"  End:   ({step.end_p[0]:.3f}, {step.end_p[1]:.3f}, {step.end_p[2]:.3f})")
         print(f"  Width: {step.step_width:.3f}m")
-        print(f"  Polar: r={step.line_polar_form[0]:.2f}, θ={step.line_polar_form[1]:.2f}")
+        print(f"  Polar: r={step.line_polar_form[0]:.2f}, theta={step.line_polar_form[1]:.2f}")
 
 
 def main():

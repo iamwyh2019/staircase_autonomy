@@ -207,3 +207,4 @@ realsense_utils/pointclouds/
 
 # build temp
 staircase_perception_standalone/python/build_temp/
+staircase_perception_standalone/python/Release/
